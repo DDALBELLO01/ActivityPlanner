@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestione Attività</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body>
+  <div id="auth-section">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <button onclick="signup()">Registrati</button>
+  </div>
+
+  <div id="main-section" style="display:none;">
+    <h1>Gestione Attività</h1>
+    <nav>
+      <button onclick="showTab('attivita')">Attività</button>
+      <button onclick="showTab('calendario')">Calendario</button>
+      <button onclick="showTab('membri')">Membri</button>
+      <button onclick="logout()">Logout</button>
+    </nav>
+
+    <!-- Sezione Attività -->
+    <section id="attivita" class="tab">
+      <h2>Inserisci Attività</h2>
+      <input type="text" id="titolo" placeholder="Titolo"><br>
+      <textarea id="obiettivi" placeholder="Obiettivi"></textarea><br>
+      <input type="date" id="data"><br>
+      <textarea id="raggiunti" placeholder="Obiettivi raggiunti"></textarea><br>
+
+      <h3>Tabella Oraria</h3>
+      <div id="tabella-oraria"></div>
+      <button onclick="aggiungiRigaOraria()">+ Aggiungi riga</button>
+
+      <br><button onclick="salvaAttivita()">Salva Attività</button>
+      <h3>Lista Attività</h3>
+      <ul id="lista-attivita"></ul>
+    </section>
+
+    <!-- Sezione Calendario -->
+    <section id="calendario" class="tab" style="display:none;">
+      <h2>Calendario Attività</h2>
+      <div id="calendar"></div>
+    </section>
+
+    <!-- Sezione Membri -->
+    <section id="membri" class="tab" style="display:none;">
+      <h2>Membri Unità</h2>
+      <input type="text" id="nome" placeholder="Nome">
+      <input type="text" id="cognome" placeholder="Cognome">
+      <input type="number" id="anno" placeholder="Anno">
+      <input type="text" id="ruolo" placeholder="Ruolo">
+      <button onclick="aggiungiMembro()">Aggiungi</button>
+      <h3>Lista Membri</h3>
+      <ul id="lista-membri"></ul>
+    </section>
+  </div>
+
+  <script>
+    // CONFIGURAZIONE SUPABASE
+    const SUPABASE_URL = "https://ouxvlyaksbfvqmdryzpn.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91eHZseWFrc2JmdnFtZHJ5enBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NDA3ODUsImV4cCI6MjA3MTExNjc4NX0.NWvgiCIhqNA6wLr6ARAJrQjItMfZZ78JZ6IwlkomZkI";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // LOGIN & AUTH
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) alert(error.message);
+      else {
+        document.getElementById("auth-section").style.display = "none";
+        document.getElementById("main-section").style.display = "block";
+        caricaAttivita();
+        caricaMembri();
+      }
+    }
+
+    async function signup() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) alert(error.message);
+      else alert("Registrazione completata, ora effettua il login.");
+    }
+
+    async function logout() {
+      await supabaseClient.auth.signOut();
+      document.getElementById("auth-section").style.display = "block";
+      document.getElementById("main-section").style.display = "none";
+    }
+
+    // GESTIONE TAB
+    function showTab(tabName) {
+      document.querySelectorAll('.tab').forEach(t => t.style.display = "none");
+      document.getElementById(tabName).style.display = "block";
+    }
+
+    // FUNZIONE 1: ATTIVITÀ
+    function aggiungiRigaOraria() {
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <input type="time" placeholder="Orario">
+        <input type="text" placeholder="Tipo">
+        <input type="text" placeholder="Descrizione">
+        <input type="text" placeholder="Gestore">
+      `;
+      document.getElementById("tabella-oraria").appendChild(div);
+    }
+
+    async function salvaAttivita() {
+      const titolo = document.getElementById("titolo").value;
+      const obiettivi = document.getElementById("obiettivi").value;
+      const data = document.getElementById("data").value;
+      const raggiunti = document.getElementById("raggiunti").value;
+
+      const { data: insertData, error } = await supabaseClient
+        .from('attivita')
+        .insert([{ titolo, obiettivi, data, raggiunti }]);
+
+      if (error) alert(error.message);
+      else caricaAttivita();
+    }
+
+    async function caricaAttivita() {
+      const { data, error } = await supabaseClient.from('attivita').select('*');
+      if (!error) {
+        const lista = document.getElementById("lista-attivita");
+        lista.innerHTML = "";
+        data.forEach(a => {
+          const li = document.createElement("li");
+          li.textContent = `${a.titolo} (${a.data})`;
+          lista.appendChild(li);
+        });
+      }
+    }
+
+    // FUNZIONE 3: MEMBRI
+    async function aggiungiMembro() {
+      const nome = document.getElementById("nome").value;
+      const cognome = document.getElementById("cognome").value;
+      const anno = document.getElementById("anno").value;
+      const ruolo = document.getElementById("ruolo").value;
+
+      const { error } = await supabaseClient
+        .from('membri')
+        .insert([{ nome, cognome, anno, ruolo }]);
+
+      if (error) alert(error.message);
+      else caricaMembri();
+    }
+
+    async function caricaMembri() {
+      const { data, error } = await supabaseClient.from('membri').select('*');
+      if (!error) {
+        const lista = document.getElementById("lista-membri");
+        lista.innerHTML = "";
+        data.forEach(m => {
+          const li = document.createElement("li");
+          li.textContent = `${m.nome} ${m.cognome} - ${m.ruolo} (${m.anno})`;
+          lista.appendChild(li);
+        });
+      }
+    }
+  </script>
+</body>
+</html>
