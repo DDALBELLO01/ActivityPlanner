@@ -250,6 +250,13 @@
 
       if (error) alert(error.message);
       else {
+        // svuoto i campi
+        document.getElementById("titolo").value = "";
+        document.getElementById("obiettivi").value = "";
+        document.getElementById("data").value = "";
+        document.getElementById("raggiunti").value = "";
+        document.getElementById("tabella-oraria").innerHTML = "";
+
         caricaAttivita();
         caricaCalendario();
       }
@@ -302,7 +309,15 @@
         .insert([{ nome, cognome, anno, ruolo }]);
 
       if (error) alert(error.message);
-      else caricaMembri();
+      else {
+        // svuoto i campi
+        document.getElementById("nome").value = "";
+        document.getElementById("cognome").value = "";
+        document.getElementById("anno").value = "";
+        document.getElementById("ruolo").value = "";
+
+        caricaMembri();
+      }
     }
 
     async function caricaMembri() {
