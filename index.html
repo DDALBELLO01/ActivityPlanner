@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestione Attività</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
   <style>
     body {
       margin: 0;
@@ -115,8 +116,16 @@
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
+    #calendar {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.js'></script>
 </head>
 <body>
   <header>Gestione Attività</header>
@@ -158,7 +167,7 @@
     <!-- Sezione Calendario -->
     <section id="calendario" class="tab" style="display:none;">
       <h2><i class="fa-solid fa-calendar-days"></i> Calendario Attività</h2>
-      <div id="calendar" style="background:white; padding:1rem; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);"></div>
+      <div id="calendar"></div>
     </section>
 
     <!-- Sezione Membri -->
@@ -179,6 +188,8 @@
     const SUPABASE_URL = "https://ouxvlyaksbfvqmdryzpn.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91eHZseWFrc2JmdnFtZHJ5enBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NDA3ODUsImV4cCI6MjA3MTExNjc4NX0.NWvgiCIhqNA6wLr6ARAJrQjItMfZZ78JZ6IwlkomZkI";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let calendar;
 
     async function login() {
       const email = document.getElementById("email").value;
@@ -210,6 +221,9 @@
     function showTab(tabName) {
       document.querySelectorAll('.tab').forEach(t => t.style.display = "none");
       document.getElementById(tabName).style.display = "block";
+      if (tabName === 'calendario' && calendar) {
+        calendar.render();
+      }
     }
 
     function aggiungiRigaOraria() {
@@ -235,7 +249,10 @@
         .insert([{ titolo, obiettivi, data, raggiunti }]);
 
       if (error) alert(error.message);
-      else caricaAttivita();
+      else {
+        caricaAttivita();
+        caricaCalendario();
+      }
     }
 
     async function caricaAttivita() {
@@ -248,6 +265,29 @@
           li.innerHTML = `<span><i class=\"fa-solid fa-circle-check\"></i> ${a.titolo} (${a.data})</span>`;
           lista.appendChild(li);
         });
+        caricaCalendario();
+      }
+    }
+
+    async function caricaCalendario() {
+      const { data, error } = await supabaseClient.from('attivita').select('*');
+      if (!error) {
+        const events = data.map(a => ({
+          title: a.titolo,
+          start: a.data
+        }));
+        if (!calendar) {
+          const calendarEl = document.getElementById('calendar');
+          calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'it',
+            events: events
+          });
+          calendar.render();
+        } else {
+          calendar.removeAllEvents();
+          calendar.addEventSource(events);
+        }
       }
     }
 
