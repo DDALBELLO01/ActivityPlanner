@@ -165,20 +165,44 @@
     </section>
 
     <!-- Modale Dettaglio Attività -->
-    <div id="modal-attivita" 
+    <!-- Modale Dettaglio Attività -->
+<div id="modal-attivita" 
      style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
             background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-  <div style="background:white; padding:2rem; border-radius:10px; width:400px; max-width:90%; position:relative;">
-    <button onclick="chiudiModal()" style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:1.2rem; cursor:pointer;">
+  <div style="background:white; padding:2rem; border-radius:10px; width:500px; max-width:95%; position:relative;">
+    
+    <!-- Pulsante Chiudi -->
+    <button onclick="chiudiModal()" 
+            style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:1.2rem; cursor:pointer;">
       <i class="fa-solid fa-xmark"></i>
     </button>
+
     <h3>Dettagli Attività</h3>
     <p><strong>Titolo:</strong> <span id="modal-titolo"></span></p>
     <p><strong>Obiettivi:</strong> <span id="modal-obiettivi"></span></p>
     <p><strong>Data:</strong> <span id="modal-data"></span></p>
     <p><strong>Obiettivi Raggiunti:</strong> <span id="modal-raggiunti"></span></p>
+
+    <h4>Tabella Oraria</h4>
+    <ul id="modal-tabella-oraria" style="padding-left:20px;"></ul>
+
+    <div style="margin-top:1.5rem; text-align:right;">
+      <button onclick="modificaAttivita()" 
+              style="background:#f1c40f; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
+        <i class="fa-solid fa-pen-to-square"></i> Modifica
+      </button>
+      <button onclick="eliminaAttivita()" 
+              style="background:#e74c3c; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
+        <i class="fa-solid fa-trash"></i> Elimina
+      </button>
+      <button onclick="chiudiModal()" 
+              style="background:#7f8c8d; color:white; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
+        <i class="fa-solid fa-xmark"></i> Chiudi
+      </button>
+    </div>
   </div>
 </div>
+
 
 
     <!-- Sezione Calendario -->
@@ -261,9 +285,25 @@
       const data = document.getElementById("data").value;
       const raggiunti = document.getElementById("raggiunti").value;
 
-      const { error } = await supabaseClient
-        .from('attivita')
-        .insert([{ titolo, obiettivi, data, raggiunti }]);
+      // leggo righe tabella oraria
+const righe = [];
+document.querySelectorAll("#tabella-oraria div").forEach(div => {
+  const inputs = div.querySelectorAll("input");
+  righe.push({
+    orario: inputs[0].value,
+    tipo: inputs[1].value,
+    descrizione: inputs[2].value,
+    gestore: inputs[3].value
+  });
+});
+
+const tabella_oraria = JSON.stringify(righe);
+
+// salvataggio in supabase
+const { error } = await supabaseClient
+  .from('attivita')
+  .insert([{ titolo, obiettivi, data, raggiunti, tabella_oraria }]);
+
 
       if (error) alert(error.message);
       else {
@@ -335,8 +375,9 @@
         });
       }
     }
+  let attivitaSelezionata = null; // salvo attività corrente
 
-    async function caricaAttivita() {
+  async function caricaAttivita() {
     const { data, error } = await supabaseClient.from('attivita').select('*');
     if (!error) {
       const lista = document.getElementById("lista-attivita");
@@ -345,12 +386,7 @@
         const li = document.createElement("li");
         li.innerHTML = `<span><i class="fa-solid fa-circle-check"></i> ${a.titolo} (${a.data})</span>`;
         li.style.cursor = "pointer";
-
-        // al click mostro il modale
-        li.addEventListener("click", () => {
-          mostraDettagliAttivita(a);
-        });
-
+        li.addEventListener("click", () => mostraDettagliAttivita(a));
         lista.appendChild(li);
       });
       caricaCalendario();
@@ -358,19 +394,86 @@
   }
 
   function mostraDettagliAttivita(attivita) {
+    attivitaSelezionata = attivita;
+
     document.getElementById("modal-titolo").innerText = attivita.titolo || "-";
     document.getElementById("modal-obiettivi").innerText = attivita.obiettivi || "-";
     document.getElementById("modal-data").innerText = attivita.data || "-";
     document.getElementById("modal-raggiunti").innerText = attivita.raggiunti || "-";
 
-    // faccio comparire il modale in modalità flex
-    const modal = document.getElementById("modal-attivita");
-    modal.style.display = "flex";
+    // Mostro tabella oraria (se salvata come JSON o testo nel DB)
+    const tabellaOrariaEl = document.getElementById("modal-tabella-oraria");
+    tabellaOrariaEl.innerHTML = "";
+    if (attivita.tabella_oraria) {
+      try {
+        const righe = JSON.parse(attivita.tabella_oraria);
+        righe.forEach(r => {
+          const li = document.createElement("li");
+          li.textContent = `${r.orario} - ${r.tipo} - ${r.descrizione} (Gestore: ${r.gestore})`;
+          tabellaOrariaEl.appendChild(li);
+        });
+      } catch {
+        tabellaOrariaEl.innerHTML = "<li>Nessuna tabella oraria salvata</li>";
+      }
+    } else {
+      tabellaOrariaEl.innerHTML = "<li>Nessuna tabella oraria</li>";
+    }
+
+    document.getElementById("modal-attivita").style.display = "flex";
   }
 
   function chiudiModal() {
     document.getElementById("modal-attivita").style.display = "none";
+    attivitaSelezionata = null;
   }
-  </script>
+
+  async function eliminaAttivita() {
+    if (!attivitaSelezionata) return;
+    if (!confirm("Vuoi davvero eliminare questa attività?")) return;
+
+    const { error } = await supabaseClient
+      .from('attivita')
+      .delete()
+      .eq('id', attivitaSelezionata.id);
+
+    if (error) alert(error.message);
+    else {
+      chiudiModal();
+      caricaAttivita();
+    }
+  }
+
+  function modificaAttivita() {
+    if (!attivitaSelezionata) return;
+
+    // riporto i valori nei campi input per modificarli
+    document.getElementById("titolo").value = attivitaSelezionata.titolo || "";
+    document.getElementById("obiettivi").value = attivitaSelezionata.obiettivi || "";
+    document.getElementById("data").value = attivitaSelezionata.data || "";
+    document.getElementById("raggiunti").value = attivitaSelezionata.raggiunti || "";
+
+    // se c'è tabella oraria la ricarico
+    document.getElementById("tabella-oraria").innerHTML = "";
+    if (attivitaSelezionata.tabella_oraria) {
+      try {
+        const righe = JSON.parse(attivitaSelezionata.tabella_oraria);
+        righe.forEach(r => {
+          const div = document.createElement("div");
+          div.style.margin = "0.5rem 0";
+          div.innerHTML = `
+            <input type="time" value="${r.orario}">
+            <input type="text" value="${r.tipo}">
+            <input type="text" value="${r.descrizione}">
+            <input type="text" value="${r.gestore}">
+          `;
+          document.getElementById("tabella-oraria").appendChild(div);
+        });
+      } catch {}
+    }
+
+    chiudiModal();
+  }
+</script>
+
 </body>
 </html>
