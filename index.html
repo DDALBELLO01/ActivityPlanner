@@ -154,7 +154,8 @@
       <input type="text" id="titolo" placeholder="Titolo">
       <textarea id="obiettivi" placeholder="Obiettivi"></textarea>
       <input type="date" id="data">
-      <textarea id="raggiunti" placeholder="Obiettivi raggiunti"></textarea>
+  <textarea id="raggiunti" placeholder="Obiettivi raggiunti"></textarea>
+  <input type="hidden" id="id-attivita">
 
       <h3>Tabella Oraria</h3>
       <div id="tabella-oraria"></div>
@@ -270,6 +271,48 @@
         });
         caricaCalendario();
       }
+
+      // CALENDARIO
+      function caricaCalendario() {
+        const calendarEl = document.getElementById('calendar');
+        if (!calendarEl) return;
+        // Rimuovi eventuale calendario precedente
+        calendarEl.innerHTML = "";
+        // Recupera le attività dalla lista
+        const lista = document.getElementById("lista-attivita");
+        let eventi = [];
+        // Se le attività sono già caricate in data, usale
+        if (window.attivitaData) {
+          eventi = window.attivitaData.map(a => ({
+            title: a.titolo,
+            start: a.data,
+            extendedProps: a
+          }));
+        } else {
+          // Se non sono caricate, prova a recuperarle dalla lista
+          eventi = Array.from(lista.children).map(li => {
+            const titolo = li.innerText;
+            // Prova a estrarre la data dal testo
+            const match = titolo.match(/\((\d{4}-\d{2}-\d{2})\)/);
+            return {
+              title: titolo,
+              start: match ? match[1] : undefined
+            };
+          });
+        }
+        // Inizializza FullCalendar
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth',
+          locale: 'it',
+          events: eventi,
+          eventClick: function(info) {
+            if(info.event.extendedProps) {
+              mostraDettagliAttivita(info.event.extendedProps);
+            }
+          }
+        });
+        calendar.render();
+      }
     }
 
     function mostraDettagliAttivita(attivita){
@@ -318,8 +361,7 @@
 
     function modificaAttivita(){
       if(!attivitaSelezionata) return;
-      attivitaInModifica = attivitaSelezionata;
-
+      document.getElementById("id-attivita").value = attivitaSelezionata.id || "";
       document.getElementById("titolo").value = attivitaSelezionata.titolo || "";
       document.getElementById("obiettivi").value = attivitaSelezionata.obiettivi || "";
       document.getElementById("data").value = attivitaSelezionata.data || "";
@@ -351,6 +393,7 @@
       const obiettivi = document.getElementById("obiettivi").value;
       const data = document.getElementById("data").value;
       const raggiunti = document.getElementById("raggiunti").value;
+      const id = document.getElementById("id-attivita").value;
 
       const righe = [];
       document.querySelectorAll("#tabella-oraria div").forEach(div=>{
@@ -365,12 +408,11 @@
       const tabella_oraria = JSON.stringify(righe);
 
       let error;
-      if(attivitaInModifica){
+      if(id){
         ({error} = await supabaseClient
           .from('attivita')
           .update({ titolo, obiettivi, data, raggiunti, tabella_oraria })
-          .eq('id', attivitaInModifica.id));
-        attivitaInModifica = null;
+          .eq('id', id));
       } else {
         ({error} = await supabaseClient
           .from('attivita')
@@ -383,6 +425,7 @@
         document.getElementById("obiettivi").value="";
         document.getElementById("data").value="";
         document.getElementById("raggiunti").value="";
+        document.getElementById("id-attivita").value="";
         document.getElementById("tabella-oraria").innerHTML="";
         caricaAttivita();
       }
