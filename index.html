@@ -130,6 +130,7 @@
 <body>
   <header>Gestione Attività</header>
 
+  <!-- LOGIN / REGISTRAZIONE -->
   <div id="auth-section">
     <h2><i class="fa-solid fa-right-to-bracket"></i> Login</h2>
     <input type="email" id="email" placeholder="Email">
@@ -138,6 +139,7 @@
     <button onclick="signup()" style="background:#2ecc71;">Registrati</button>
   </div>
 
+  <!-- MAIN -->
   <div id="main-section" style="display:none;">
     <nav>
       <button onclick="showTab('attivita')"><i class="fa-solid fa-list"></i> Attività</button>
@@ -146,7 +148,7 @@
       <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
     </nav>
 
-    <!-- Sezione Attività -->
+    <!-- ATTIVITÀ -->
     <section id="attivita" class="tab">
       <h2><i class="fa-solid fa-clipboard"></i> Inserisci Attività</h2>
       <input type="text" id="titolo" placeholder="Titolo">
@@ -164,114 +166,233 @@
       <ul id="lista-attivita"></ul>
     </section>
 
-    <!-- Modale Dettaglio Attività -->
-    <!-- Modale Dettaglio Attività -->
-<div id="modal-attivita" 
-     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; 
-            background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-  <div style="background:white; padding:2rem; border-radius:10px; width:500px; max-width:95%; position:relative;">
-    
-    <!-- Pulsante Chiudi -->
-    <button onclick="chiudiModal()" 
-            style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:1.2rem; cursor:pointer;">
-      <i class="fa-solid fa-xmark"></i>
-    </button>
-
-    <h3>Dettagli Attività</h3>
-    <p><strong>Titolo:</strong> <span id="modal-titolo"></span></p>
-    <p><strong>Obiettivi:</strong> <span id="modal-obiettivi"></span></p>
-    <p><strong>Data:</strong> <span id="modal-data"></span></p>
-    <p><strong>Obiettivi Raggiunti:</strong> <span id="modal-raggiunti"></span></p>
-
-    <h4>Tabella Oraria</h4>
-    <ul id="modal-tabella-oraria" style="padding-left:20px;"></ul>
-
-    <div style="margin-top:1.5rem; text-align:right;">
-      <button onclick="modificaAttivita()" 
-              style="background:#f1c40f; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-        <i class="fa-solid fa-pen-to-square"></i> Modifica
-      </button>
-      <button onclick="eliminaAttivita()" 
-              style="background:#e74c3c; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-        <i class="fa-solid fa-trash"></i> Elimina
-      </button>
-      <button onclick="chiudiModal()" 
-              style="background:#7f8c8d; color:white; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-        <i class="fa-solid fa-xmark"></i> Chiudi
-      </button>
+    <!-- MODALE DETTAGLIO ATTIVITÀ -->
+    <div id="modal-attivita" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
+      <div style="background:white; padding:2rem; border-radius:10px; width:500px; max-width:95%; position:relative;">
+        <button onclick="chiudiModal()" style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:1.2rem; cursor:pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <h3>Dettagli Attività</h3>
+        <p><strong>Titolo:</strong> <span id="modal-titolo"></span></p>
+        <p><strong>Obiettivi:</strong> <span id="modal-obiettivi"></span></p>
+        <p><strong>Data:</strong> <span id="modal-data"></span></p>
+        <p><strong>Obiettivi Raggiunti:</strong> <span id="modal-raggiunti"></span></p>
+        <h4>Tabella Oraria</h4>
+        <ul id="modal-tabella-oraria" style="padding-left:20px;"></ul>
+        <div style="margin-top:1.5rem; text-align:right;">
+          <button onclick="modificaAttivita()" style="background:#f1c40f; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
+            <i class="fa-solid fa-pen-to-square"></i> Modifica
+          </button>
+          <button onclick="eliminaAttivita()" style="background:#e74c3c; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
+            <i class="fa-solid fa-trash"></i> Elimina
+          </button>
+          <button onclick="chiudiModal()" style="background:#7f8c8d; color:white; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
+            <i class="fa-solid fa-xmark"></i> Chiudi
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
 
-
-
-    <!-- Sezione Calendario -->
+    <!-- CALENDARIO -->
     <section id="calendario" class="tab" style="display:none;">
       <h2><i class="fa-solid fa-calendar-days"></i> Calendario Attività</h2>
       <div id="calendar"></div>
     </section>
 
-    <!-- Sezione Membri -->
+    <!-- MEMBRI -->
     <section id="membri" class="tab" style="display:none;">
-      <h2><i class="fa-solid fa-users"></i> Membri Unità</h2>
-      <input type="text" id="nome" placeholder="Nome">
-      <input type="text" id="cognome" placeholder="Cognome">
-      <input type="number" id="anno" placeholder="Anno">
-      <input type="text" id="ruolo" placeholder="Ruolo">
-      <button onclick="aggiungiMembro()" style="background:#2ecc71;"><i class="fa-solid fa-user-plus"></i> Aggiungi</button>
-
-      <h3>Lista Membri</h3>
+      <h2><i class="fa-solid fa-users"></i> Membri</h2>
+      <input type="text" id="nome-membro" placeholder="Nome">
+      <input type="text" id="cognome-membro" placeholder="Cognome">
+      <button onclick="aggiungiMembro()" style="background:#2ecc71;"><i class="fa-solid fa-user-plus"></i> Aggiungi Membro</button>
       <ul id="lista-membri"></ul>
     </section>
   </div>
 
   <script>
-    const SUPABASE_URL = "https://ouxvlyaksbfvqmdryzpn.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91eHZseWFrc2JmdnFtZHJ5enBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NDA3ODUsImV4cCI6MjA3MTExNjc4NX0.NWvgiCIhqNA6wLr6ARAJrQjItMfZZ78JZ6IwlkomZkI";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // SUPABASE
+    const supabaseUrl = "INSERISCI_LA_TUA_URL";
+    const supabaseKey = "INSERISCI_LA_TUA_ANON_KEY";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-    let calendar;
-
+    // LOGIN / REGISTRAZIONE
     async function login() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) alert(error.message);
-      else {
-        document.getElementById("auth-section").style.display = "none";
-        document.getElementById("main-section").style.display = "block";
-        caricaAttivita();
-        caricaMembri();
-      }
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if(error) alert(error.message);
+      else showMain();
     }
 
     async function signup() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
       const { error } = await supabaseClient.auth.signUp({ email, password });
-      if (error) alert(error.message);
-      else alert("Registrazione completata, ora effettua il login.");
+      if(error) alert(error.message);
+      else alert("Registrazione effettuata, controlla email per conferma!");
     }
 
     async function logout() {
       await supabaseClient.auth.signOut();
-      document.getElementById("auth-section").style.display = "block";
       document.getElementById("main-section").style.display = "none";
+      document.getElementById("auth-section").style.display = "block";
     }
 
-    function showTab(tabName) {
-      document.querySelectorAll('.tab').forEach(t => t.style.display = "none");
-      document.getElementById(tabName).style.display = "block";
-      if (tabName === 'calendario' && calendar) {
-        calendar.render();
+    function showMain() {
+      document.getElementById("auth-section").style.display = "none";
+      document.getElementById("main-section").style.display = "block";
+      caricaAttivita();
+      caricaMembri();
+      caricaCalendario();
+    }
+
+    // TAB
+    function showTab(tabId) {
+      document.querySelectorAll(".tab").forEach(t => t.style.display="none");
+      document.getElementById(tabId).style.display = "block";
+    }
+
+    // ATTIVITÀ
+    let attivitaSelezionata = null; 
+    let attivitaInModifica = null;
+
+    async function caricaAttivita() {
+      const { data, error } = await supabaseClient.from('attivita').select('*');
+      if(!error){
+        const lista = document.getElementById("lista-attivita");
+        lista.innerHTML = "";
+        data.forEach(a => {
+          const li = document.createElement("li");
+          li.innerHTML = `<span><i class="fa-solid fa-circle-check"></i> ${a.titolo} (${a.data})</span>`;
+          li.style.cursor = "pointer";
+          li.addEventListener("click", ()=>mostraDettagliAttivita(a));
+          lista.appendChild(li);
+        });
+        caricaCalendario();
       }
     }
 
-    function aggiungiRigaOraria() {
+    function mostraDettagliAttivita(attivita){
+      attivitaSelezionata = attivita;
+      document.getElementById("modal-titolo").innerText = attivita.titolo || "-";
+      document.getElementById("modal-obiettivi").innerText = attivita.obiettivi || "-";
+      document.getElementById("modal-data").innerText = attivita.data || "-";
+      document.getElementById("modal-raggiunti").innerText = attivita.raggiunti || "-";
+
+      const tabellaOrariaEl = document.getElementById("modal-tabella-oraria");
+      tabellaOrariaEl.innerHTML = "";
+      if(attivita.tabella_oraria){
+        try {
+          const righe = JSON.parse(attivita.tabella_oraria);
+          righe.forEach(r=>{
+            const li = document.createElement("li");
+            li.textContent = `${r.orario} - ${r.tipo} - ${r.descrizione} (Gestore: ${r.gestore})`;
+            tabellaOrariaEl.appendChild(li);
+          });
+        } catch { tabellaOrariaEl.innerHTML = "<li>Errore nel leggere la tabella</li>"; }
+      } else tabellaOrariaEl.innerHTML = "<li>Nessuna tabella oraria</li>";
+
+      document.getElementById("modal-attivita").style.display="flex";
+    }
+
+    function chiudiModal(){
+      document.getElementById("modal-attivita").style.display="none";
+      attivitaSelezionata = null;
+    }
+
+    async function eliminaAttivita(){
+      if(!attivitaSelezionata) return;
+      if(!confirm("Vuoi davvero eliminare questa attività?")) return;
+
+      const { error } = await supabaseClient
+        .from('attivita')
+        .delete()
+        .eq('id', attivitaSelezionata.id);
+
+      if(error) alert(error.message);
+      else {
+        chiudiModal();
+        caricaAttivita();
+      }
+    }
+
+    function modificaAttivita(){
+      if(!attivitaSelezionata) return;
+      attivitaInModifica = attivitaSelezionata;
+
+      document.getElementById("titolo").value = attivitaSelezionata.titolo || "";
+      document.getElementById("obiettivi").value = attivitaSelezionata.obiettivi || "";
+      document.getElementById("data").value = attivitaSelezionata.data || "";
+      document.getElementById("raggiunti").value = attivitaSelezionata.raggiunti || "";
+
+      document.getElementById("tabella-oraria").innerHTML="";
+      if(attivitaSelezionata.tabella_oraria){
+        try {
+          const righe = JSON.parse(attivitaSelezionata.tabella_oraria);
+          righe.forEach(r=>{
+            const div = document.createElement("div");
+            div.style.margin="0.5rem 0";
+            div.innerHTML = `
+              <input type="time" value="${r.orario}">
+              <input type="text" value="${r.tipo}">
+              <input type="text" value="${r.descrizione}">
+              <input type="text" value="${r.gestore}">
+            `;
+            document.getElementById("tabella-oraria").appendChild(div);
+          });
+        } catch {}
+      }
+
+      chiudiModal();
+    }
+
+    async function salvaAttivita(){
+      const titolo = document.getElementById("titolo").value;
+      const obiettivi = document.getElementById("obiettivi").value;
+      const data = document.getElementById("data").value;
+      const raggiunti = document.getElementById("raggiunti").value;
+
+      const righe = [];
+      document.querySelectorAll("#tabella-oraria div").forEach(div=>{
+        const inputs = div.querySelectorAll("input");
+        righe.push({
+          orario: inputs[0].value,
+          tipo: inputs[1].value,
+          descrizione: inputs[2].value,
+          gestore: inputs[3].value
+        });
+      });
+      const tabella_oraria = JSON.stringify(righe);
+
+      let error;
+      if(attivitaInModifica){
+        ({error} = await supabaseClient
+          .from('attivita')
+          .update({ titolo, obiettivi, data, raggiunti, tabella_oraria })
+          .eq('id', attivitaInModifica.id));
+        attivitaInModifica = null;
+      } else {
+        ({error} = await supabaseClient
+          .from('attivita')
+          .insert([{ titolo, obiettivi, data, raggiunti, tabella_oraria }]));
+      }
+
+      if(error) alert("Errore: "+error.message);
+      else {
+        document.getElementById("titolo").value="";
+        document.getElementById("obiettivi").value="";
+        document.getElementById("data").value="";
+        document.getElementById("raggiunti").value="";
+        document.getElementById("tabella-oraria").innerHTML="";
+        caricaAttivita();
+      }
+    }
+
+    function aggiungiRigaOraria(){
       const div = document.createElement("div");
-      div.style.margin = "0.5rem 0";
+      div.style.margin="0.5rem 0";
       div.innerHTML = `
-        <input type="time" placeholder="Orario">
+        <input type="time" value="">
         <input type="text" placeholder="Tipo">
         <input type="text" placeholder="Descrizione">
         <input type="text" placeholder="Gestore">
@@ -279,86 +400,28 @@
       document.getElementById("tabella-oraria").appendChild(div);
     }
 
-    async function salvaAttivita() {
-      const titolo = document.getElementById("titolo").value;
-      const obiettivi = document.getElementById("obiettivi").value;
-      const data = document.getElementById("data").value;
-      const raggiunti = document.getElementById("raggiunti").value;
-
-      // leggo righe tabella oraria
-const righe = [];
-document.querySelectorAll("#tabella-oraria div").forEach(div => {
-  const inputs = div.querySelectorAll("input");
-  righe.push({
-    orario: inputs[0].value,
-    tipo: inputs[1].value,
-    descrizione: inputs[2].value,
-    gestore: inputs[3].value
-  });
-});
-
-const tabella_oraria = JSON.stringify(righe);
-
-// salvataggio in supabase
-const { error } = await supabaseClient
-  .from('attivita')
-  .insert([{ titolo, obiettivi, data, raggiunti, tabella_oraria }]);
-
-
-      if (error) alert(error.message);
-      else {
-        // svuoto i campi
-        document.getElementById("titolo").value = "";
-        document.getElementById("obiettivi").value = "";
-        document.getElementById("data").value = "";
-        document.getElementById("raggiunti").value = "";
-        document.getElementById("tabella-oraria").innerHTML = "";
-
-        caricaAttivita();
-        caricaCalendario();
+    // MEMBRI
+    async function caricaMembri(){
+      const { data, error } = await supabaseClient.from('membri').select('*');
+      if(!error){
+        const lista = document.getElementById("lista-membri");
+        lista.innerHTML="";
+        data.forEach(m=>{
+          const li = document.createElement("li");
+          li.textContent = m.nome + " " + m.cognome;
+          lista.appendChild(li);
+        });
       }
     }
 
-    async function caricaCalendario() {
-      const { data, error } = await supabaseClient.from('attivita').select('*');
-      if (!error) {
-        const events = data.map(a => ({
-          title: a.titolo,
-          start: a.data
-        }));
-        if (!calendar) {
-          const calendarEl = document.getElementById('calendar');
-          calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'it',
-            events: events
-          });
-          calendar.render();
-        } else {
-          calendar.removeAllEvents();
-          calendar.addEventSource(events);
-        }
-      }
-    }
-
-    async function aggiungiMembro() {
-      const nome = document.getElementById("nome").value;
-      const cognome = document.getElementById("cognome").value;
-      const anno = document.getElementById("anno").value;
-      const ruolo = document.getElementById("ruolo").value;
-
-      const { error } = await supabaseClient
-        .from('membri')
-        .insert([{ nome, cognome, anno, ruolo }]);
-
-      if (error) alert(error.message);
+    async function aggiungiMembro(){
+      const nome = document.getElementById("nome-membro").value;
+      const cognome = document.getElementById("cognome-membro").value;
+      const { error } = await supabaseClient.from('membri').insert([{ nome, cognome }]);
+      if(error) alert(error.message);
       else {
-        // svuoto i campi
-        document.getElementById("nome").value = "";
-        document.getElementById("cognome").value = "";
-        document.getElementById("anno").value = "";
-        document.getElementById("ruolo").value = "";
-
+        document.getElementById("nome-membro").value="";
+        document.getElementById("cognome-membro").value="";
         caricaMembri();
       }
     }
@@ -375,7 +438,6 @@ const { error } = await supabaseClient
         });
       }
     }
-  let attivitaSelezionata = null; // salvo attività corrente
 
   async function caricaAttivita() {
     const { data, error } = await supabaseClient.from('attivita').select('*');
