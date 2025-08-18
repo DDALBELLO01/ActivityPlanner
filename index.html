@@ -4,70 +4,182 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestione Attività</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f6f9;
+      color: #333;
+    }
+
+    header {
+      background: #2c3e50;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      background: #34495e;
+      padding: 0.5rem;
+    }
+
+    nav button {
+      background: none;
+      border: none;
+      color: white;
+      margin: 0 1rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+      border-radius: 5px;
+    }
+
+    nav button:hover {
+      background: #2c3e50;
+    }
+
+    section {
+      padding: 2rem;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    input, textarea, button {
+      margin: 0.3rem 0;
+      padding: 0.6rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      width: 100%;
+      font-size: 1rem;
+    }
+
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #2980b9;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    ul li {
+      background: white;
+      margin: 0.3rem 0;
+      padding: 0.7rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #auth-section {
+      max-width: 400px;
+      margin: 5rem auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    #auth-section h2 {
+      margin-bottom: 1rem;
+    }
+
+    #main-section h1 {
+      text-align: center;
+      margin: 1rem 0;
+    }
+
+    .tab {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 </head>
 <body>
+  <header>Gestione Attività</header>
+
   <div id="auth-section">
-    <h2>Login</h2>
+    <h2><i class="fa-solid fa-right-to-bracket"></i> Login</h2>
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
     <button onclick="login()">Login</button>
-    <button onclick="signup()">Registrati</button>
+    <button onclick="signup()" style="background:#2ecc71;">Registrati</button>
   </div>
 
   <div id="main-section" style="display:none;">
-    <h1>Gestione Attività</h1>
     <nav>
-      <button onclick="showTab('attivita')">Attività</button>
-      <button onclick="showTab('calendario')">Calendario</button>
-      <button onclick="showTab('membri')">Membri</button>
-      <button onclick="logout()">Logout</button>
+      <button onclick="showTab('attivita')"><i class="fa-solid fa-list"></i> Attività</button>
+      <button onclick="showTab('calendario')"><i class="fa-solid fa-calendar-days"></i> Calendario</button>
+      <button onclick="showTab('membri')"><i class="fa-solid fa-users"></i> Membri</button>
+      <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
     </nav>
 
     <!-- Sezione Attività -->
     <section id="attivita" class="tab">
-      <h2>Inserisci Attività</h2>
-      <input type="text" id="titolo" placeholder="Titolo"><br>
-      <textarea id="obiettivi" placeholder="Obiettivi"></textarea><br>
-      <input type="date" id="data"><br>
-      <textarea id="raggiunti" placeholder="Obiettivi raggiunti"></textarea><br>
+      <h2><i class="fa-solid fa-clipboard"></i> Inserisci Attività</h2>
+      <input type="text" id="titolo" placeholder="Titolo">
+      <textarea id="obiettivi" placeholder="Obiettivi"></textarea>
+      <input type="date" id="data">
+      <textarea id="raggiunti" placeholder="Obiettivi raggiunti"></textarea>
 
       <h3>Tabella Oraria</h3>
       <div id="tabella-oraria"></div>
-      <button onclick="aggiungiRigaOraria()">+ Aggiungi riga</button>
+      <button onclick="aggiungiRigaOraria()"><i class="fa-solid fa-plus"></i> Aggiungi riga</button>
 
-      <br><button onclick="salvaAttivita()">Salva Attività</button>
+      <button onclick="salvaAttivita()" style="margin-top:1rem; background:#2ecc71;"><i class="fa-solid fa-save"></i> Salva Attività</button>
+
       <h3>Lista Attività</h3>
       <ul id="lista-attivita"></ul>
     </section>
 
     <!-- Sezione Calendario -->
     <section id="calendario" class="tab" style="display:none;">
-      <h2>Calendario Attività</h2>
-      <div id="calendar"></div>
+      <h2><i class="fa-solid fa-calendar-days"></i> Calendario Attività</h2>
+      <div id="calendar" style="background:white; padding:1rem; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.1);"></div>
     </section>
 
     <!-- Sezione Membri -->
     <section id="membri" class="tab" style="display:none;">
-      <h2>Membri Unità</h2>
+      <h2><i class="fa-solid fa-users"></i> Membri Unità</h2>
       <input type="text" id="nome" placeholder="Nome">
       <input type="text" id="cognome" placeholder="Cognome">
       <input type="number" id="anno" placeholder="Anno">
       <input type="text" id="ruolo" placeholder="Ruolo">
-      <button onclick="aggiungiMembro()">Aggiungi</button>
+      <button onclick="aggiungiMembro()" style="background:#2ecc71;"><i class="fa-solid fa-user-plus"></i> Aggiungi</button>
+
       <h3>Lista Membri</h3>
       <ul id="lista-membri"></ul>
     </section>
   </div>
 
   <script>
-    // CONFIGURAZIONE SUPABASE
     const SUPABASE_URL = "https://ouxvlyaksbfvqmdryzpn.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91eHZseWFrc2JmdnFtZHJ5enBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NDA3ODUsImV4cCI6MjA3MTExNjc4NX0.NWvgiCIhqNA6wLr6ARAJrQjItMfZZ78JZ6IwlkomZkI";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // LOGIN & AUTH
     async function login() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
@@ -84,7 +196,7 @@
     async function signup() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      const { error } = await supabaseClient.auth.signUp({ email, password });
       if (error) alert(error.message);
       else alert("Registrazione completata, ora effettua il login.");
     }
@@ -95,15 +207,14 @@
       document.getElementById("main-section").style.display = "none";
     }
 
-    // GESTIONE TAB
     function showTab(tabName) {
       document.querySelectorAll('.tab').forEach(t => t.style.display = "none");
       document.getElementById(tabName).style.display = "block";
     }
 
-    // FUNZIONE 1: ATTIVITÀ
     function aggiungiRigaOraria() {
       const div = document.createElement("div");
+      div.style.margin = "0.5rem 0";
       div.innerHTML = `
         <input type="time" placeholder="Orario">
         <input type="text" placeholder="Tipo">
@@ -119,7 +230,7 @@
       const data = document.getElementById("data").value;
       const raggiunti = document.getElementById("raggiunti").value;
 
-      const { data: insertData, error } = await supabaseClient
+      const { error } = await supabaseClient
         .from('attivita')
         .insert([{ titolo, obiettivi, data, raggiunti }]);
 
@@ -134,13 +245,12 @@
         lista.innerHTML = "";
         data.forEach(a => {
           const li = document.createElement("li");
-          li.textContent = `${a.titolo} (${a.data})`;
+          li.innerHTML = `<span><i class=\"fa-solid fa-circle-check\"></i> ${a.titolo} (${a.data})</span>`;
           lista.appendChild(li);
         });
       }
     }
 
-    // FUNZIONE 3: MEMBRI
     async function aggiungiMembro() {
       const nome = document.getElementById("nome").value;
       const cognome = document.getElementById("cognome").value;
@@ -162,7 +272,7 @@
         lista.innerHTML = "";
         data.forEach(m => {
           const li = document.createElement("li");
-          li.textContent = `${m.nome} ${m.cognome} - ${m.ruolo} (${m.anno})`;
+          li.innerHTML = `<span><i class=\"fa-solid fa-user\"></i> ${m.nome} ${m.cognome} - ${m.ruolo} (${m.anno})</span>`;
           lista.appendChild(li);
         });
       }
