@@ -216,6 +216,34 @@
       <ul id="lista-membri"></ul>
       <div id="obiettivi-membri-list"></div>
     </section>
+
+    <!-- UTENTI (solo admin) -->
+    <section id="utenti" class="tab" style="display:none;">
+      <h2><i class="fa-solid fa-users"></i> Utenti</h2>
+      <input type="text" id="nome-utente" placeholder="Nome">
+      <input type="text" id="cognome-utente" placeholder="Cognome">
+      <input type="email" id="email-utente" placeholder="Email">
+      <button onclick="aggiungiUtente()" style="background:#2ecc71;"><i class="fa-solid fa-user-plus"></i> Aggiungi Utente</button>
+      <h3>Obiettivi raggiunti per utente</h3>
+      <div id="obiettivi-utente-form" style="margin-bottom:1rem;">
+        <input type="email" id="email-utente-obiettivo" placeholder="Email utente">
+        <input type="date" id="data-obiettivo-utente">
+        <input type="text" id="testo-obiettivo-utente" placeholder="Obiettivo raggiunto">
+        <button onclick="aggiungiObiettivoUtente()" style="background:#27ae60;">Aggiungi Obiettivo</button>
+      </div>
+      <ul id="lista-utenti"></ul>
+      <div id="obiettivi-utenti-list"></div>
+    </section>
+
+    <!-- IMPOSTAZIONI (solo admin) -->
+    <section id="impostazioni" class="tab" style="display:none;">
+      <h2><i class="fa-solid fa-gear"></i> Impostazioni</h2>
+      <div id="impostazioni-list"></div>
+      <h3>Aggiungi impostazione</h3>
+      <input type="text" id="chiave-impostazione" placeholder="Chiave">
+      <input type="text" id="valore-impostazione" placeholder="Valore">
+      <button onclick="aggiungiImpostazione()" style="background:#2ecc71;">Aggiungi</button>
+    </section>
   </div>
 
   <script>
@@ -532,104 +560,75 @@
       }
     }
 
-
-  async function caricaAttivita() {
-    const { data, error } = await supabaseClient.from('attivita').select('*');
-    if (!error) {
-      const lista = document.getElementById("lista-attivita");
-      lista.innerHTML = "";
-      data.forEach(a => {
-        const li = document.createElement("li");
-        li.innerHTML = `<span><i class="fa-solid fa-circle-check"></i> ${a.titolo} (${a.data})</span>`;
-        li.style.cursor = "pointer";
-        li.addEventListener("click", () => mostraDettagliAttivita(a));
-        lista.appendChild(li);
-      });
-      caricaCalendario();
-    }
-  }
-
-  function mostraDettagliAttivita(attivita) {
-    attivitaSelezionata = attivita;
-
-    document.getElementById("modal-titolo").innerText = attivita.titolo || "-";
-    document.getElementById("modal-obiettivi").innerText = attivita.obiettivi || "-";
-    document.getElementById("modal-data").innerText = attivita.data || "-";
-    document.getElementById("modal-raggiunti").innerText = attivita.raggiunti || "-";
-
-    // Mostro tabella oraria (se salvata come JSON o testo nel DB)
-    const tabellaOrariaEl = document.getElementById("modal-tabella-oraria");
-    tabellaOrariaEl.innerHTML = "";
-    if (attivita.tabella_oraria) {
-      try {
-        const righe = JSON.parse(attivita.tabella_oraria);
-        righe.forEach(r => {
+    // UTENTI (solo admin)
+    async function caricaUtenti() {
+      const { data, error } = await supabaseClient.from('utenti').select('*');
+      if (!error) {
+        const lista = document.getElementById("lista-utenti");
+        lista.innerHTML = "";
+        data.forEach(u => {
           const li = document.createElement("li");
-          li.textContent = `${r.orario} - ${r.tipo} - ${r.descrizione} (Gestore: ${r.gestore})`;
-          tabellaOrariaEl.appendChild(li);
+          li.innerHTML = `<span><i class="fa-solid fa-circle-check"></i> ${u.nome} ${u.cognome} (${u.email})</span>`;
+          li.style.cursor = "pointer";
+          li.addEventListener("click", () => mostraDettagliUtente(u));
+          lista.appendChild(li);
         });
-      } catch {
-        tabellaOrariaEl.innerHTML = "<li>Nessuna tabella oraria salvata</li>";
       }
-    } else {
-      tabellaOrariaEl.innerHTML = "<li>Nessuna tabella oraria</li>";
     }
 
-    document.getElementById("modal-attivita").style.display = "flex";
-  }
-
-  function chiudiModal() {
-    document.getElementById("modal-attivita").style.display = "none";
-    attivitaSelezionata = null;
-  }
-
-  async function eliminaAttivita() {
-    if (!attivitaSelezionata) return;
-    if (!confirm("Vuoi davvero eliminare questa attività?")) return;
-
-    const { error } = await supabaseClient
-      .from('attivita')
-      .delete()
-      .eq('id', attivitaSelezionata.id);
-
-    if (error) alert(error.message);
-    else {
-      chiudiModal();
-      caricaAttivita();
+    function mostraDettagliUtente(utente) {
+      // Funzione per mostrare i dettagli dell'utente (da implementare se necessaria)
+      alert(`Dettagli utente:\nNome: ${utente.nome}\nCognome: ${utente.cognome}\nEmail: ${utente.email}`);
     }
-  }
 
-  function modificaAttivita() {
-    if (!attivitaSelezionata) return;
+    async function aggiungiUtente() {
+      const nome = document.getElementById("nome-utente").value;
+      const cognome = document.getElementById("cognome-utente").value;
+      const email = document.getElementById("email-utente").value;
+      const { error } = await supabaseClient.from('utenti').insert([{ nome, cognome, email }]);
+      if (error) alert(error.message);
+      else {
+        document.getElementById("nome-utente").value = "";
+        document.getElementById("cognome-utente").value = "";
+        document.getElementById("email-utente").value = "";
+        caricaUtenti();
+      }
+    }
 
-    // riporto i valori nei campi input per modificarli
-    document.getElementById("titolo").value = attivitaSelezionata.titolo || "";
-    document.getElementById("obiettivi").value = attivitaSelezionata.obiettivi || "";
-    document.getElementById("data").value = attivitaSelezionata.data || "";
-    document.getElementById("raggiunti").value = attivitaSelezionata.raggiunti || "";
-
-    // se c'è tabella oraria la ricarico
-    document.getElementById("tabella-oraria").innerHTML = "";
-    if (attivitaSelezionata.tabella_oraria) {
-      try {
-        const righe = JSON.parse(attivitaSelezionata.tabella_oraria);
-        righe.forEach(r => {
+    // IMPOSTAZIONI (solo admin)
+    async function caricaImpostazioni() {
+      const { data, error } = await supabaseClient.from('impostazioni').select('*');
+      if (!error) {
+        const lista = document.getElementById("impostazioni-list");
+        lista.innerHTML = "";
+        data.forEach(i => {
           const div = document.createElement("div");
-          div.style.margin = "0.5rem 0";
-          div.innerHTML = `
-            <input type="time" value="${r.orario}">
-            <input type="text" value="${r.tipo}">
-            <input type="text" value="${r.descrizione}">
-            <input type="text" value="${r.gestore}">
-          `;
-          document.getElementById("tabella-oraria").appendChild(div);
+          div.innerHTML = `<strong>${i.chiave}:</strong> ${i.valore}`;
+          lista.appendChild(div);
         });
-      } catch {}
+      }
     }
 
-    chiudiModal();
-  }
-</script>
+    async function aggiungiImpostazione() {
+      const chiave = document.getElementById("chiave-impostazione").value;
+      const valore = document.getElementById("valore-impostazione").value;
+      const { error } = await supabaseClient.from('impostazioni').insert([{ chiave, valore }]);
+      if (error) alert(error.message);
+      else {
+        document.getElementById("chiave-impostazione").value = "";
+        document.getElementById("valore-impostazione").value = "";
+        caricaImpostazioni();
+      }
+    }
+
+    // Inizializza la pagina caricando le attività, membri, utenti e impostazioni
+    document.addEventListener("DOMContentLoaded", () => {
+      caricaAttivita();
+      caricaMembri();
+      caricaUtenti();
+      caricaImpostazioni();
+    });
+  </script>
 
 </body>
 </html>
