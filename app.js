@@ -1,4 +1,4 @@
-// Inizializzazione Supabase
+// App.js - Applicazione principale con controllo autenticazione
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -14,51 +14,118 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function initializeApp() {
     try {
-        // Controlla se c'è un token di registrazione nell'URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const registrationToken = urlParams.get('register');
+        console.log('=== INIZIALIZZAZIONE APP ===');
+        console.log('Controllo accesso a app.html...');
+        console.log('URL attuale:', window.location.href);
         
-        if (registrationToken) {
-            await handleRegistrationFromURL(registrationToken);
+        // Aggiungi un timeout per evitare che il controllo sia troppo veloce
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Controlla la sessione invece dell'utente
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        
+        console.log('Risultato getSession:');
+        console.log('- Errore:', error);
+        console.log('- Sessione esistente:', !!session);
+        console.log('- Utente nella sessione:', !!session?.user);
+        console.log('- Email utente:', session?.user?.email);
+        console.log('- ID utente:', session?.user?.id);
+        console.log('- Access token presente:', !!session?.access_token);
+        console.log('- Refresh token presente:', !!session?.refresh_token);
+        
+        if (error) {
+            console.log('❌ ERRORE SESSIONE - Dettagli:', error);
+            console.log('❌ Reindirizzamento a login.html per errore');
+            window.location.replace('login.html?error=session_error');
             return;
         }
         
-        // Controlla se l'utente è già autenticato
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        
-        if (user) {
-            await loadUserData(user);
-            showMainScreen();
-        } else {
-            showLoginScreen();
+        if (!session) {
+            console.log('❌ NESSUNA SESSIONE TROVATA');
+            console.log('❌ Reindirizzamento a login.html per sessione mancante');
+            window.location.replace('login.html?error=no_session');
+            return;
         }
+        
+        if (!session.user) {
+            console.log('❌ SESSIONE SENZA UTENTE');
+            console.log('❌ Reindirizzamento a login.html per utente mancante');
+            window.location.replace('login.html?error=no_user');
+            return;
+        }
+        
+        console.log('✅ ACCESSO AUTORIZZATO');
+        console.log('✅ Utente:', session.user.email);
+        console.log('✅ ID utente:', session.user.id);
+        console.log('✅ ACCESSO AUTORIZZATO');
+        console.log('✅ Utente:', session.user.email);
+        console.log('✅ ID utente:', session.user.id);
+        
+        // Mostra schermata di caricamento
+        console.log('📱 Mostrando schermata di caricamento...');
+        showLoadingScreen();
+        
+        // Carica i dati dell'utente
+        console.log('📊 Iniziando caricamento dati utente...');
+        
+        // In caso di errore, esegui debug database
+        try {
+            await loadUserData(session.user);
+        } catch (loadError) {
+            console.error('❌ Errore durante caricamento dati utente, eseguendo debug...');
+            await debugDatabaseAccess(session.user);
+            throw loadError; // Rilancia l'errore dopo il debug
+        }
+        
+        console.log('✅ Dati utente caricati con successo');
+        
+        // Mostra l'app principale
+        console.log('🚀 Mostrando app principale...');
+        showMainScreen();
+        
+        // Setup event listeners
+        console.log('🔧 Configurando event listeners...');
+        setupEventListeners();
+        console.log('✅ Inizializzazione completata con successo');
+        console.log('=== FINE INIZIALIZZAZIONE ===');
+        
     } catch (error) {
-        console.error('Errore inizializzazione:', error);
-        showLoginScreen();
+        console.error('💥 ERRORE CRITICO durante inizializzazione app:', error);
+        console.error('💥 Stack trace:', error.stack);
+        console.error('💥 Messaggio:', error.message);
+        console.log('❌ Reindirizzamento a login.html per errore critico');
+        window.location.replace('login.html?error=init_error');
     }
-
-    // Aggiungi event listeners
-    setupEventListeners();
 }
 
+// Controllo autenticazione in tempo reale
+let authListenerSetup = false;
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    console.log('=== AUTH STATE CHANGE ===');
+    console.log('Evento:', event);
+    console.log('Sessione presente:', !!session);
+    console.log('Utente presente:', !!session?.user);
+    console.log('Email utente:', session?.user?.email);
+    
+    // Evita loop durante l'inizializzazione
+    if (!authListenerSetup) {
+        authListenerSetup = true;
+        console.log('Auth listener configurato, ignorando primo evento');
+        return;
+    }
+    
+    if (event === 'SIGNED_OUT' || !session) {
+        // Utente ha fatto logout o sessione scaduta
+        console.log('❌ Utente disconnesso o sessione scaduta');
+        console.log('❌ Reindirizzamento a login.html');
+        window.location.replace('login.html?event=' + event);
+    } else if (event === 'SIGNED_IN' && session) {
+        console.log('✅ Utente loggato, sessione valida');
+    }
+    console.log('=== FINE AUTH STATE CHANGE ===');
+});
+
 function setupEventListeners() {
-    // Login form
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
-    
-    // Registration form
-    document.getElementById('registration-form').addEventListener('submit', handleRegistration);
-    
-    // Toggle between login and registration
-    document.getElementById('show-register-link').addEventListener('click', (e) => {
-        e.preventDefault();
-        showRegistrationScreen();
-    });
-    
-    document.getElementById('show-login-link').addEventListener('click', (e) => {
-        e.preventDefault();
-        showLoginScreen();
-    });
-    
     // Tab navigation
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', handleTabClick);
@@ -99,171 +166,162 @@ function setupEventListeners() {
     document.getElementById('add-objective-btn').addEventListener('click', addObjectiveRow);
 }
 
-// Autenticazione e Registrazione
-async function handleRegistrationFromURL(token) {
-    try {
-        // Decodifica il token di registrazione
-        const registrationData = JSON.parse(atob(token));
-        
-        if (registrationData.unitId) {
-            // Pre-popola il form di registrazione con l'unità
-            await showRegistrationScreen();
-            await loadUnitsForRegistration();
-            document.getElementById('reg-unit').value = registrationData.unitId;
-        } else {
-            showRegistrationScreen();
-            await loadUnitsForRegistration();
-        }
-    } catch (error) {
-        console.error('Token di registrazione non valido:', error);
-        showRegistrationScreen();
-        await loadUnitsForRegistration();
-    }
-}
-
-async function loadUnitsForRegistration() {
-    try {
-        // Carica tutte le unità disponibili per la registrazione
-        const { data: units, error } = await supabaseClient
-            .from('unita')
-            .select('id, nome')
-            .order('nome');
-
-        if (error) throw error;
-
-        const unitSelector = document.getElementById('reg-unit');
-        unitSelector.innerHTML = '<option value="">Seleziona Unità</option>';
-
-        units.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit.id;
-            option.textContent = unit.nome;
-            unitSelector.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Errore caricamento unità per registrazione:', error);
-    }
-}
-
-async function handleRegistration(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    const nome = formData.get('nome');
-    const cognome = formData.get('cognome');
-    const email = formData.get('email');
-    const password = formData.get('password');
-    const confirmPassword = formData.get('confirm_password');
-    const unitaId = formData.get('unita_id');
-    
-    const errorElement = document.getElementById('registration-error');
-    const successElement = document.getElementById('registration-success');
-    
-    // Reset messaggi
-    errorElement.textContent = '';
-    errorElement.classList.remove('show');
-    successElement.style.display = 'none';
-    
-    // Validazione
-    if (password !== confirmPassword) {
-        errorElement.textContent = 'Le password non corrispondono';
-        errorElement.classList.add('show');
-        return;
-    }
-    
-    if (!unitaId) {
-        errorElement.textContent = 'Seleziona un\'unità';
-        errorElement.classList.add('show');
-        return;
-    }
-
-    try {
-        // Registra l'utente con Supabase Auth
-        const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-                data: {
-                    nome: nome,
-                    cognome: cognome,
-                    unita_id: unitaId
-                }
-            }
-        });
-
-        if (error) throw error;
-
-        successElement.textContent = 'Registrazione completata! Controlla la tua email per verificare l\'account.';
-        successElement.style.display = 'block';
-        
-        // Reset del form
-        document.getElementById('registration-form').reset();
-        
-        // Redirect al login dopo 3 secondi
-        setTimeout(() => {
-            showLoginScreen();
-        }, 3000);
-
-    } catch (error) {
-        errorElement.textContent = 'Errore durante la registrazione: ' + error.message;
-        errorElement.classList.add('show');
-    }
-}
-
-// Genera URL di registrazione personalizzato
-function generateRegistrationURL(unitId, baseURL = window.location.origin + window.location.pathname) {
-    const token = btoa(JSON.stringify({ unitId: unitId }));
-    return `${baseURL}?register=${token}`;
-}
-
-async function handleLogin(e) {
-    e.preventDefault();
-    
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const errorElement = document.getElementById('login-error');
-
-    try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
-        if (error) throw error;
-
-        await loadUserData(data.user);
-        showMainScreen();
-    } catch (error) {
-        errorElement.textContent = 'Errore di autenticazione: ' + error.message;
-        errorElement.classList.add('show');
-    }
-}
-
+// Funzione di logout globale
 async function handleLogout() {
     try {
+        console.log('Logout utente...');
         await supabaseClient.auth.signOut();
-        currentUser = null;
-        currentUnit = null;
-        showLoginScreen();
+        window.location.replace('login.html');
     } catch (error) {
         console.error('Errore logout:', error);
+        // Forza il reindirizzamento anche in caso di errore
+        window.location.replace('login.html');
     }
 }
 
 async function loadUserData(user) {
     try {
-        // Carica i dati dell'utente dal database
-        const { data: userData, error } = await supabaseClient
-            .from('utenti')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+        console.log('📊 === INIZIO CARICAMENTO DATI UTENTE ===');
+        console.log('📧 Email utente da caricare:', user.email);
+        console.log('🔑 UID utente:', user.id);
+        
+        // STEP 1A: Tentativo query per UID (se il campo esiste)
+        console.log('🔍 STEP 1A: Tentativo query database utenti tramite UID...');
+        let userData = null;
+        let error = null;
+        
+        // Prima prova con l'UID (se il campo auth_id o uid esiste nella tabella)
+        try {
+            const { data: userDataByUID, error: errorUID } = await supabaseClient
+                .from('utenti')
+                .select('*')
+                .eq('auth_id', user.id)  // Assumendo che ci sia un campo auth_id
+                .single();
+                
+            if (!errorUID && userDataByUID) {
+                console.log('✅ TROVATO UTENTE TRAMITE UID:', userDataByUID.email);
+                userData = userDataByUID;
+            } else {
+                console.log('⚠️ Utente non trovato tramite UID (campo auth_id), tentativo con email...');
+                console.log('Dettaglio errore UID:', errorUID?.code, errorUID?.message);
+            }
+        } catch (uidError) {
+            console.log('⚠️ Campo auth_id probabilmente non esiste, procedendo con email...');
+            console.log('Errore:', uidError.message);
+        }
+        
+        // STEP 1B: Se non trovato tramite UID, prova con email
+        if (!userData) {
+            console.log('� STEP 1B: Query database utenti tramite EMAIL...');
+            const result = await supabaseClient
+                .from('utenti')
+                .select('*')
+                .eq('email', user.email)
+                .single();
+                
+            userData = result.data;
+            error = result.error;
+            
+            if (!error && userData) {
+                console.log('✅ TROVATO UTENTE TRAMITE EMAIL:', userData.email);
+            } else if (error?.code === '42P17') {
+                console.error('🔄 ERRORE LOOP INFINITO RLS - Politiche da correggere!');
+                console.error('📝 Eseguire fix-rls-policies.sql in Supabase per risolvere');
+                
+                // Crea utente temporaneo con i dati della sessione
+                console.log('🛠️ Creazione utente temporaneo per bypassare RLS...');
+                userData = {
+                    id: null, // Non abbiamo l'ID del database
+                    email: user.email,
+                    nome: user.user_metadata?.nome || user.email.split('@')[0] || 'Nome',
+                    cognome: user.user_metadata?.cognome || 'Utente',
+                    capo_unita: false,
+                    aiuto: false,
+                    admin: false,
+                    unita_id: null,
+                    unita_visibili: []
+                };
+                error = null; // Reset dell'errore
+                console.log('👤 Utente temporaneo creato per bypassare RLS:', userData);
+            }
+        }
 
-        if (error) throw error;
+        console.log('�📊 Risultato query utenti:');
+        console.log('- Errore:', error);
+        console.log('- Dati ricevuti:', !!userData);
+        console.log('- Dettaglio errore:', error?.code, error?.message);
 
+        if (error) {
+            console.error('❌ ERRORE QUERY DATABASE UTENTI:', error);
+            console.error('Codice errore:', error.code);
+            console.error('Messaggio:', error.message);
+            
+            // Se l'utente non esiste nel DB, crea dati temporanei
+            if (error.code === 'PGRST116') {
+                console.log('⚠️ UTENTE NON TROVATO NEL DB - Creazione dati temporanei');
+                currentUser = {
+                    id: user.id,
+                    email: user.email,
+                    nome: user.user_metadata?.nome || user.email.split('@')[0] || 'Nome',
+                    cognome: user.user_metadata?.cognome || 'Utente',
+                    capo_unita: false,
+                    aiuto: false,
+                    admin: false,
+                    unita_id: null,
+                    unita_visibili: []
+                };
+                
+                console.log('👤 Dati temporanei creati:', currentUser);
+                document.getElementById('user-name').textContent = `${currentUser.nome} ${currentUser.cognome} (Profilo incompleto)`;
+                
+                // Nascondi i tab admin
+                document.getElementById('admin-tab').style.display = 'none';
+                document.getElementById('site-admin-tab').style.display = 'none';
+                
+                console.log('✅ STEP 1 COMPLETATO con dati temporanei');
+                console.log('⚠️ ATTENZIONE: Utente non presente nel database, alcune funzioni potrebbero non funzionare');
+                return;
+            } else {
+                console.error('💥 ERRORE CRITICO nella query utenti');
+                throw error;
+            }
+        }
+
+        if (!userData) {
+            console.error('❌ NESSUN DATO UTENTE TROVATO per email:', user.email, 'UID:', user.id);
+            throw new Error('Utente non trovato nel database');
+        }
+
+        console.log('✅ STEP 1 COMPLETATO - Dati utente caricati:', userData);
         currentUser = userData;
+        
+        // Aggiorna l'auth_id se non è presente (per future query più veloci)
+        if (!userData.auth_id && userData.id) {
+            console.log('🔄 Aggiornamento auth_id nel database per future query...');
+            try {
+                const { error: updateError } = await supabaseClient
+                    .from('utenti')
+                    .update({ auth_id: user.id })
+                    .eq('id', userData.id);
+                    
+                if (updateError) {
+                    console.log('⚠️ Non è stato possibile aggiornare auth_id:', updateError.message);
+                } else {
+                    console.log('✅ auth_id aggiornato con successo');
+                }
+            } catch (updateErr) {
+                console.log('⚠️ Campo auth_id probabilmente non esiste nella tabella');
+            }
+        }
+        
         document.getElementById('user-name').textContent = `${userData.nome} ${userData.cognome}`;
 
+        // STEP 2: Configurazione permessi UI
+        console.log('🔧 STEP 2: Configurazione interfaccia utente...');
+        console.log('- Capo unità:', userData.capo_unita);
+        console.log('- Aiuto:', userData.aiuto);
+        console.log('- Admin:', userData.admin);
+        
         // Mostra/nasconde i tab in base ai permessi
         document.getElementById('admin-tab').style.display = 
             (userData.capo_unita || userData.aiuto) ? 'block' : 'none';
@@ -271,51 +329,124 @@ async function loadUserData(user) {
         document.getElementById('site-admin-tab').style.display = 
             userData.admin ? 'block' : 'none';
 
-        // Carica le unità disponibili
+        console.log('✅ STEP 2 COMPLETATO - UI configurata');
+
+        // STEP 3: Caricamento unità disponibili
+        console.log('🏢 STEP 3: Caricamento unità disponibili...');
         await loadAvailableUnits();
+        console.log('✅ STEP 3 COMPLETATO - Unità caricate');
+        
+        console.log('🎉 === CARICAMENTO DATI UTENTE COMPLETATO ===');
 
     } catch (error) {
-        console.error('Errore caricamento dati utente:', error);
+        console.error('💥 === ERRORE CRITICO CARICAMENTO DATI UTENTE ===');
+        console.error('💥 Tipo errore:', error.constructor.name);
+        console.error('💥 Messaggio:', error.message);
+        console.error('💥 Stack trace:', error.stack);
+        console.error('💥 Errore completo:', error);
+        throw error;
     }
 }
 
 async function loadAvailableUnits() {
     try {
-        // Carica le unità dal database basandosi sulle unita_visibili dell'utente
+        console.log('🏢 === INIZIO CARICAMENTO UNITÀ ===');
+        console.log('👤 Utente corrente:', currentUser?.email);
+        console.log('🔑 Admin:', currentUser?.admin);
+        console.log('👁️ Unità visibili:', currentUser?.unita_visibili);
+        
+        // STEP 1: Costruzione query
+        console.log('🔍 STEP 1: Costruzione query per le unità...');
         let query = supabaseClient.from('unita').select('*');
         
         // Se l'utente non è admin, filtra per unità visibili
-        if (!currentUser.admin && currentUser.unita_visibili && currentUser.unita_visibili.length > 0) {
+        if (!currentUser?.admin && currentUser?.unita_visibili && Array.isArray(currentUser.unita_visibili) && currentUser.unita_visibili.length > 0) {
+            console.log('🔒 Applicando filtro per unità visibili:', currentUser.unita_visibili);
             query = query.in('id', currentUser.unita_visibili);
+        } else if (!currentUser?.admin && (!currentUser?.unita_visibili || currentUser.unita_visibili.length === 0)) {
+            console.log('⚠️ Utente non admin senza unità visibili - Nessuna unità sarà caricata');
+            // Per utenti temporanei o senza unità, restituisce array vuoto
+            const units = [];
+            console.log('📋 Nessuna unità disponibile per questo utente');
+            
+            const unitSelector = document.getElementById('unit-selector');
+            if (!unitSelector) {
+                console.error('❌ ELEMENTO unit-selector NON TROVATO nel DOM!');
+                throw new Error('Elemento unit-selector non trovato');
+            }
+            
+            unitSelector.innerHTML = '<option value="">Nessuna unità disponibile</option>';
+            console.log('⚠️ === CARICAMENTO UNITÀ COMPLETATO (NESSUNA UNITÀ) ===');
+            return;
+        } else {
+            console.log('🌍 Utente admin o con accesso globale - Caricando tutte le unità');
         }
         
+        console.log('📊 STEP 2: Esecuzione query unità...');
         const { data: units, error } = await query.order('nome');
 
-        if (error) throw error;
+        console.log('📊 Risultato query unità:');
+        console.log('- Errore:', error);
+        console.log('- Unità trovate:', units?.length || 0);
+        console.log('- Dettaglio errore:', error?.code, error?.message);
 
+        if (error) {
+            console.error('❌ ERRORE QUERY UNITÀ:', error);
+            throw error;
+        }
+
+        console.log('✅ STEP 2 COMPLETATO - Query unità eseguita');
+        console.log('📋 Unità caricate:', units?.map(u => u.nome) || []);
+
+        // STEP 3: Popolazione selector
+        console.log('🎛️ STEP 3: Aggiornamento selector unità...');
         const unitSelector = document.getElementById('unit-selector');
+        
+        if (!unitSelector) {
+            console.error('❌ ELEMENTO unit-selector NON TROVATO nel DOM!');
+            throw new Error('Elemento unit-selector non trovato');
+        }
+        
         unitSelector.innerHTML = '<option value="">Seleziona Unità</option>';
 
-        units.forEach(unit => {
+        units.forEach((unit, index) => {
+            console.log(`➕ Aggiungendo unità ${index + 1}: ${unit.nome} (ID: ${unit.id})`);
             const option = document.createElement('option');
             option.value = unit.id;
             option.textContent = unit.nome;
             unitSelector.appendChild(option);
         });
 
-        // Seleziona automaticamente la prima unità se disponibile
+        console.log('✅ STEP 3 COMPLETATO - Selector popolato');
+
+        // STEP 4: Selezione automatica prima unità
         if (units.length > 0) {
+            console.log('🎯 STEP 4: Selezione automatica prima unità:', units[0].nome);
             unitSelector.value = units[0].id;
             await handleUnitChange();
+            console.log('✅ STEP 4 COMPLETATO - Unità selezionata');
+        } else {
+            console.log('⚠️ STEP 4: Nessuna unità disponibile per l\'utente');
         }
         
-        // Se l'utente è admin, aggiunge anche la possibilità di generare URL di registrazione
-        if (currentUser.admin) {
+        // STEP 5: Setup admin se necessario
+        if (currentUser?.admin) {
+            console.log('👑 STEP 5: Setup generatore URL per admin...');
             await loadRegistrationURLGenerator();
+            console.log('✅ STEP 5 COMPLETATO - Admin setup completato');
+        } else {
+            console.log('ℹ️ STEP 5: Utente non admin, skip setup admin');
         }
+        
+        console.log('🎉 === CARICAMENTO UNITÀ COMPLETATO ===');
         
     } catch (error) {
-        console.error('Errore caricamento unità:', error);
+        console.error('💥 === ERRORE CRITICO CARICAMENTO UNITÀ ===');
+        console.error('💥 Tipo errore:', error.constructor.name);
+        console.error('💥 Messaggio:', error.message);
+        console.error('💥 Stack trace:', error.stack);
+        console.error('💥 Errore completo:', error);
+        throw error;
     }
 }
 
@@ -383,39 +514,20 @@ async function loadRegistrationURLGenerator() {
     }
 }
 
-// Gestione schermata
-function showLoginScreen() {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('registration-screen').style.display = 'none';
-    document.getElementById('main-screen').style.display = 'none';
-    
-    // Reset form e messaggi
-    document.getElementById('login-form').reset();
-    document.getElementById('login-error').classList.remove('show');
-    
-    // Pulisce l'URL dai parametri di registrazione
-    if (window.location.search) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
+// Genera URL di registrazione personalizzato
+function generateRegistrationURL(unitId = null, baseURL = window.location.origin + window.location.pathname.replace('app.html', '')) {
+    const token = btoa(JSON.stringify({ unitId: unitId }));
+    return `${baseURL}register.html?register=${token}`;
 }
 
-function showRegistrationScreen() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('registration-screen').style.display = 'flex';
+// Gestione schermata
+function showLoadingScreen() {
+    document.getElementById('loading-screen').style.display = 'flex';
     document.getElementById('main-screen').style.display = 'none';
-    
-    // Reset form e messaggi
-    document.getElementById('registration-form').reset();
-    document.getElementById('registration-error').classList.remove('show');
-    document.getElementById('registration-success').style.display = 'none';
-    
-    // Carica le unità per la registrazione
-    loadUnitsForRegistration();
 }
 
 function showMainScreen() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('registration-screen').style.display = 'none';
+    document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('main-screen').style.display = 'block';
     
     // Carica i dati della prima tab attiva
@@ -472,72 +584,134 @@ function handleAdminTabClick(e) {
 }
 
 async function handleUnitChange() {
-    const unitId = document.getElementById('unit-selector').value;
-    
-    if (!unitId) {
-        currentUnit = null;
-        return;
-    }
-
     try {
+        console.log('🔄 === INIZIO CAMBIO UNITÀ ===');
+        const unitId = document.getElementById('unit-selector').value;
+        console.log('🏢 ID unità selezionata:', unitId);
+        
+        if (!unitId) {
+            console.log('❌ Nessuna unità selezionata');
+            currentUnit = null;
+            return;
+        }
+
+        console.log('📊 Query per dati unità...');
         const { data: unit, error } = await supabaseClient
             .from('unita')
             .select('*')
             .eq('id', unitId)
             .single();
 
-        if (error) throw error;
+        console.log('📊 Risultato query unità:');
+        console.log('- Errore:', error);
+        console.log('- Unità trovata:', !!unit);
+        console.log('- Nome unità:', unit?.nome);
+
+        if (error) {
+            console.error('❌ ERRORE QUERY UNITÀ SINGOLA:', error);
+            throw error;
+        }
 
         currentUnit = unit;
+        console.log('✅ Unità corrente impostata:', unit.nome);
         
         // Ricarica i dati del tab attivo
+        console.log('🔄 Ricaricamento dati tab attivo...');
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab) {
             const tabId = activeTab.id;
+            console.log('📑 Tab attivo:', tabId);
             switch (tabId) {
                 case 'attivita':
+                    console.log('🎯 Ricaricando attività...');
                     loadActivities();
                     break;
                 case 'membri':
+                    console.log('👥 Ricaricando membri...');
                     loadMembers();
                     break;
+                default:
+                    console.log('ℹ️ Tab non richiede ricaricamento dati');
             }
         }
+        
+        console.log('🎉 === CAMBIO UNITÀ COMPLETATO ===');
+        
     } catch (error) {
-        console.error('Errore cambio unità:', error);
+        console.error('💥 === ERRORE CAMBIO UNITÀ ===');
+        console.error('💥 Tipo errore:', error.constructor.name);
+        console.error('💥 Messaggio:', error.message);
+        console.error('💥 Stack trace:', error.stack);
+        throw error;
     }
 }
 
 // Gestione Attività
 async function loadActivities() {
-    if (!currentUnit) return;
-
-    const container = document.getElementById('activities-list');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-
     try {
+        console.log('🎯 === INIZIO CARICAMENTO ATTIVITÀ ===');
+        console.log('🏢 Unità corrente:', currentUnit?.nome || 'Nessuna');
+        
+        if (!currentUnit) {
+            console.log('⚠️ Nessuna unità selezionata - Skip caricamento attività');
+            return;
+        }
+
+        const container = document.getElementById('activities-list');
+        if (!container) {
+            console.error('❌ ELEMENTO activities-list NON TROVATO!');
+            throw new Error('Elemento activities-list non trovato nel DOM');
+        }
+        
+        container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+        console.log('⏳ Mostrando indicatore di caricamento');
+
+        console.log('📊 Esecuzione query attività per unità ID:', currentUnit.id);
         const { data: activities, error } = await supabaseClient
             .from('attivita')
             .select('*')
             .eq('unita_id', currentUnit.id)
             .order('data', { ascending: false });
 
-        if (error) throw error;
+        console.log('📊 Risultato query attività:');
+        console.log('- Errore:', error);
+        console.log('- Attività trovate:', activities?.length || 0);
+        console.log('- Dettaglio errore:', error?.code, error?.message);
+
+        if (error) {
+            console.error('❌ ERRORE QUERY ATTIVITÀ:', error);
+            throw error;
+        }
 
         container.innerHTML = '';
 
         if (activities.length === 0) {
+            console.log('ℹ️ Nessuna attività trovata per questa unità');
             container.innerHTML = '<p>Nessuna attività trovata per questa unità.</p>';
             return;
         }
 
-        activities.forEach(activity => {
+        console.log('🎨 Creazione card attività...');
+        activities.forEach((activity, index) => {
+            console.log(`➕ Creando card ${index + 1}: ${activity.titolo}`);
             const card = createActivityCard(activity);
             container.appendChild(card);
         });
+        
+        console.log('✅ === CARICAMENTO ATTIVITÀ COMPLETATO ===');
+        
     } catch (error) {
-        console.error('Errore caricamento attività:', error);
-        container.innerHTML = '<p>Errore nel caricamento delle attività.</p>';
+        console.error('💥 === ERRORE CARICAMENTO ATTIVITÀ ===');
+        console.error('💥 Tipo errore:', error.constructor.name);
+        console.error('💥 Messaggio:', error.message);
+        console.error('💥 Stack trace:', error.stack);
+        
+        const container = document.getElementById('activities-list');
+        if (container) {
+            container.innerHTML = '<p>Errore nel caricamento delle attività.</p>';
+        }
+        
+        throw error;
     }
 }
 
@@ -1103,8 +1277,85 @@ async function editUser(id) {
 
 // Utility Functions per gestione registrazione
 function createInvitationLink(unitId = null) {
-    const baseURL = window.location.origin + window.location.pathname;
+    const baseURL = window.location.origin + window.location.pathname.replace('app.html', '');
     return generateRegistrationURL(unitId, baseURL);
+}
+
+// Funzione di debug per testare l'accesso al database
+async function debugDatabaseAccess(user) {
+    console.log('🔍 === DEBUG ACCESSO DATABASE ===');
+    
+    try {
+        // Test 1: Connessione base
+        console.log('Test 1: Connessione base al database...');
+        const { data: testConnection, error: connError } = await supabaseClient
+            .from('utenti')
+            .select('count', { count: 'exact', head: true });
+            
+        if (connError) {
+            console.error('❌ Test connessione fallito:', connError);
+        } else {
+            console.log('✅ Connessione al database OK');
+        }
+        
+        // Test 2: Struttura tabella utenti
+        console.log('Test 2: Verifica struttura tabella utenti...');
+        const { data: sampleUser, error: structError } = await supabaseClient
+            .from('utenti')
+            .select('*')
+            .limit(1);
+            
+        if (!structError && sampleUser && sampleUser.length > 0) {
+            console.log('✅ Struttura tabella utenti:', Object.keys(sampleUser[0]));
+        } else {
+            console.log('⚠️ Non è stato possibile ottenere la struttura della tabella:', structError?.message);
+        }
+        
+        // Test 3: Ricerca per email
+        console.log('Test 3: Ricerca utente per email:', user.email);
+        const { data: userByEmail, error: emailError } = await supabaseClient
+            .from('utenti')
+            .select('*')
+            .eq('email', user.email);
+            
+        console.log('Risultato ricerca email:', {
+            trovati: userByEmail?.length || 0,
+            errore: emailError?.message
+        });
+        
+        // Test 4: Verifica se esiste campo auth_id
+        console.log('Test 4: Verifica campo auth_id...');
+        try {
+            const { data: userByAuth, error: authError } = await supabaseClient
+                .from('utenti')
+                .select('auth_id')
+                .limit(1);
+                
+            if (!authError) {
+                console.log('✅ Campo auth_id esiste nella tabella');
+            }
+        } catch (authErr) {
+            console.log('⚠️ Campo auth_id non esiste nella tabella');
+        }
+        
+        // Test 5: Lista tutti gli utenti (solo primi 3 per debug)
+        console.log('Test 5: Lista primi utenti nel database...');
+        const { data: allUsers, error: listError } = await supabaseClient
+            .from('utenti')
+            .select('email, nome, cognome, admin')
+            .limit(3);
+            
+        if (!listError && allUsers) {
+            console.log('✅ Utenti nel database:', allUsers);
+        } else {
+            console.log('⚠️ Errore lista utenti:', listError?.message);
+        }
+        
+    } catch (debugError) {
+        console.error('💥 Errore durante debug database:', debugError);
+    }
+    
+    console.log('=== FINE DEBUG DATABASE ===');
 }
 
 // Funzione per admin per inviare inviti via email (estendibile)

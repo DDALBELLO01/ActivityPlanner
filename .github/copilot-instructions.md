@@ -1,42 +1,54 @@
 # Copilot Instructions for ActivityPlanner
 
-Queste linee guida aiutano gli agenti AI a lavorare in modo efficace su questo progetto web per la gestione attività, basato su un singolo file `index.html`.
+This web application for activity management follows a two-file architecture with specific patterns for Supabase integration and UI management.
 
-## Architettura e Componenti
-- **Single Page Application**: Tutta la logica e la UI sono gestite in `index.html` tramite HTML, CSS e JavaScript vanilla.
-- **Autenticazione e Dati**: Si utilizza Supabase per autenticazione e CRUD su due tabelle principali: `attivita` e `membri`.
-- **Calendario**: L'integrazione con FullCalendar visualizza le attività in formato calendario.
-- **Modale Dettaglio**: La visualizzazione dettagliata di una attività avviene tramite un modale HTML/CSS.
+## Architecture Overview
+- **Two-file structure**: Core logic split between `index.html` (UI/markup) and `script.js` (JavaScript functions)
+- **Single Page Application**: Tab-based navigation with `showTab()` function hiding/showing sections
+- **Supabase Backend**: Authentication and CRUD operations on 4 main tables: `attivita`, `membri`, `utenti`, `impostazioni`
+- **Modal Pattern**: Detail views use fixed-position overlays with `display:flex` for centering
 
-## Flussi di lavoro
-- **Login/Logout/Signup**: Funzioni JS (`login`, `logout`, `signup`) gestiscono l'autenticazione utente tramite Supabase.
-- **Gestione Attività**: Le funzioni `salvaAttivita`, `caricaAttivita`, `mostraDettagliAttivita`, `chiudiModal` gestiscono inserimento, visualizzazione e dettaglio delle attività.
-- **Gestione Membri**: Funzioni analoghe (`aggiungiMembro`, `caricaMembri`) per la tabella membri.
-- **Calendario**: `caricaCalendario` aggiorna la vista FullCalendar con le attività.
+## Database Schema (Supabase)
+- **`attivita`**: `id`, `titolo`, `obiettivi`, `data`, `raggiunti`, `tabella_oraria` (JSON)
+- **`membri`**: `id`, `nome`, `cognome`, `anno`, `ruolo`, `obiettivi` (array), `admin` (boolean), `email`
+- **`utenti`**: `id`, `nome`, `cognome`, `email` (admin-only functionality)
+- **`impostazioni`**: `id`, `chiave`, `valore` (admin-only functionality)
 
-## Convenzioni e Pattern
-- **Tutto il JS è inline**: Non ci sono moduli o separazione tra logica e presentazione.
-- **Stili CSS custom**: Nessun framework CSS, solo regole custom nel tag `<style>`.
-- **Pattern di inserimento dati**: I dati vengono inseriti tramite form HTML e salvati su Supabase.
-- **Aggiornamento UI**: Dopo ogni operazione di inserimento, la UI viene aggiornata richiamando le funzioni di caricamento.
-- **Gestione errori**: Gli errori di Supabase sono gestiti con `alert(error.message)`.
+## Critical Patterns
 
-## Dipendenze Esterne
-- **Supabase**: Per autenticazione e database (vedi chiavi e URL nel JS).
-- **FullCalendar**: Per la visualizzazione delle attività.
-- **FontAwesome**: Per le icone.
+### Authentication Flow
+```javascript
+// Admin detection happens during login by checking membri.admin field
+const { data: utenti } = await supabaseClient.from('membri').select('admin').eq('email', email);
+if (utenti[0].admin === true) document.getElementById('btn-registrati').style.display = '';
+```
 
-## Esempi di pattern
-- Per aggiungere una nuova attività:
-  - Compila i campi nel form "Inserisci Attività" e premi "Salva Attività".
-  - La funzione `salvaAttivita` salva su Supabase e aggiorna la lista e il calendario.
-- Per visualizzare dettagli:
-  - Clicca su una attività nella lista, viene aperto il modale con i dettagli.
+### Data Loading Pattern
+Every CRUD operation follows: `async function` → Supabase call → error handling with `alert()` → UI refresh via `caricaAttivita()`/`caricaMembri()`
 
-## Note operative
-- Non esistono test automatici, build o workflow CI/CD.
-- Tutto il codice è in `index.html`.
-- Per modifiche strutturali, agire direttamente su questo file.
+### Modal Management
+- Global variables track selected items: `attivitaSelezionata`, `membroSelezionato`, `membroInModifica`
+- Modals use `style.display="flex"/"none"` pattern
+- Close functions always reset tracking variables to `null`
 
----
-Sezione da aggiornare: integrare nuove convenzioni o pattern solo se effettivamente usati nel progetto.
+### Complex Data Handling
+- **Tabella Oraria**: JSON serialized array of `{orario, tipo, descrizione, gestore}` objects
+- **Obiettivi**: Array of objects with `{titolo, data}` structure, managed via temporary arrays (`obiettiviMembroTemp`)
+- **Event handlers**: Inline onclick assignments in dynamic HTML generation
+
+## External Dependencies
+- **Supabase**: `@supabase/supabase-js` via CDN - client configured in `script.js` line 4-5
+- **FullCalendar**: v6.1.11 for calendar view with Italian locale (`locale: 'it'`)
+- **FontAwesome**: v6.5.0 for icons throughout the UI
+
+## Development Workflow
+- **No build process**: Direct file editing, no compilation or bundling
+- **No testing**: Manual testing through UI interactions only
+- **Styling**: Inline CSS in `<style>` tag with custom color scheme (`#2c3e50`, `#3498db`, etc.)
+- **Error handling**: Simple `alert(error.message)` pattern for all Supabase errors
+
+## Key Functions to Know
+- `showMain()`: Initializes app after authentication, calls all load functions
+- `salvaAttivita()`: Handles both insert and update based on presence of `id-attivita` field
+- `caricaCalendario()`: Recreates FullCalendar instance on every call (line 76-108)
+- Session management: Automatic via `supabaseClient.auth.onAuthStateChange()` at bottom of script.js

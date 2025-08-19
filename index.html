@@ -1,392 +1,72 @@
 <!DOCTYPE html>
 <html lang="it">
-  <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestione Attività</title>
-    <link rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css'
-      rel='stylesheet' />
+    <title>Gestione attività - Reindirizzamento</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+</head>
+<body>
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div style="text-align: center; color: white;">
+            <h2>Reindirizzamento in corso...</h2>
+            <div style="margin: 20px 0;">
+                <div style="border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            </div>
+        </div>
+    </div>
+
     <style>
-    body {
-      margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f4f6f9;
-      color: #333;
-    }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 
-    header {
-      background: #2c3e50;
-      color: white;
-      padding: 1.5rem 0 1rem 0;
-      text-align: center;
-      font-size: 2rem;
-      font-weight: bold;
-      letter-spacing: 1px;
-    }
+    <script>
+        // Inizializzazione Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    nav {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #34495e;
-      padding: 0.5rem;
-      gap: 0.5rem;
-    }
+        // Funzione principale di reindirizzamento
+        async function redirect() {
+            try {
+                console.log('Caricamento iniziale del sito...');
+                
+                // Controlla se c'è un token di registrazione nell'URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const registrationToken = urlParams.get('register');
+                
+                if (registrationToken) {
+                    console.log('Token di registrazione trovato, reindirizzamento a register.html');
+                    window.location.replace(`register.html?register=${registrationToken}`);
+                    return;
+                }
+                
+                // Per default, vai sempre al login come pagina iniziale
+                console.log('Reindirizzamento alla pagina di login');
+                window.location.replace('login.html');
+                
+            } catch (error) {
+                console.error('Errore durante il reindirizzamento:', error);
+                // Fallback al login
+                window.location.replace('login.html');
+            }
+        }
 
-    nav button {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 0.5rem 1.2rem;
-      font-size: 1rem;
-      border-radius: 4px;
-      cursor: pointer;
-      height: 36px;
-      min-width: 100px;
-      transition: background 0.3s;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    nav button:hover {
-      background: #2980b9;
-    }
-      section {
-  padding: 2rem 1rem;
-  max-width: 900px;
-  margin: 2rem auto;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-      }
-    
-      input, textarea {
-        margin: 0.3rem 0;
-        padding: 0.6rem;
-        border-radius: 5px;
-        border: 1px solid #ccc;
-        width: 100%;
-        font-size: 1rem;
-        box-sizing: border-box;
-      }
-    
-      button {
-        background: #3498db;
-        color: white;
-        border: none;
-        cursor: pointer;
-        transition: background 0.3s;
-        border-radius: 4px;
-        padding: 0.5rem 1.2rem;
-        font-size: 1rem;
-        min-width: 100px;
-        margin: 0.2rem 0;
-        box-sizing: border-box;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-    
-      button:hover {
-        background: #2980b9;
-      }
-    
-
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    ul li {
-      background: white;
-      margin: 0.3rem 0;
-  padding: 0 0.7rem;
-  font-size: 0.95rem;
-  border-radius: 4px;
-  cursor: pointer;
-  height: 32px;
-  min-width: 80px;
-    }
-
-    #auth-section {
-      max-width: 400px;
-      margin: 5rem auto;
-      background: white;
-      padding: 2rem;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-
-    #auth-section h2 {
-      margin-bottom: 1rem;
-    }
-
-    #main-section h1 {
-      text-align: center;
-      margin: 1rem 0;
-    }
-
-    .tab {
-      animation: fadeIn 0.3s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    #calendar {
-      background: white;
-      padding: 1rem;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-  </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-    <script
-      src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.js'></script>
-    <script src="script.js"></script>
-  </head>
-  <body>
-    <header>Gestione Attività</header>
-
-    <!-- LOGIN / REGISTRAZIONE -->
-    <div id="auth-section">
-      <h2><i class="fa-solid fa-right-to-bracket"></i> Login</h2>
-      <input type="email" id="email" placeholder="Email">
-      <input type="password" id="password" placeholder="Password">
-      <button onclick="login()">Login</button>
-      <button id="btn-registrati" onclick="signup()"
-        style="background:#2ecc71; display:none;">Registrati</button>
-    </div>
-
-    <!-- MAIN -->
-    <div id="main-section" style="display:none;">
-      <nav>
-        <button onclick="showTab('attivita')"><i class="fa-solid fa-list"></i>
-          Attività</button>
-        <button onclick="showTab('calendario')"><i
-            class="fa-solid fa-calendar-days"></i> Calendario</button>
-        <button onclick="showTab('membri')"><i class="fa-solid fa-users"></i>
-          Membri</button>
-        <button onclick="logout()"><i
-            class="fa-solid fa-right-from-bracket"></i> Logout</button>
-      </nav>
-      <!-- ATTIVITÀ -->
-      <section id="attivita" class="tab">
-        <h2><i class="fa-solid fa-clipboard"></i> Inserisci Attività</h2>
-        <input type="text" id="titolo" placeholder="Titolo">
-        <textarea id="obiettivi" placeholder="Obiettivi"></textarea>
-        <input type="date" id="data">
-        <textarea id="raggiunti" placeholder="Obiettivi raggiunti"></textarea>
-        <input type="hidden" id="id-attivita">
-
-        <h3>Tabella Oraria</h3>
-        <div id="tabella-oraria"></div>
-        <button onclick="aggiungiRigaOraria()"><i class="fa-solid fa-plus"></i>
-          Aggiungi riga</button>
-
-        <button onclick="salvaAttivita()"
-          style="margin-top:1rem; background:#2ecc71;"><i
-            class="fa-solid fa-save"></i> Salva Attività</button>
-
-        <h3>Lista Attività</h3>
-        <ul id="lista-attivita"></ul>
-      </section>
-
-      <!-- MODALE DETTAGLIO ATTIVITÀ -->
-      <div id="modal-attivita"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-        <div
-          style="background:white; padding:2rem; border-radius:10px; width:500px; max-width:95%; position:relative;">
-          <button onclick="chiudiModal()"
-            style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:1.2rem; cursor:pointer;">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-          <h3>Dettagli Attività</h3>
-          <p><strong>Titolo:</strong> <span id="modal-titolo"></span></p>
-          <p><strong>Obiettivi:</strong> <span id="modal-obiettivi"></span></p>
-          <p><strong>Data:</strong> <span id="modal-data"></span></p>
-          <p><strong>Obiettivi Raggiunti:</strong> <span
-              id="modal-raggiunti"></span></p>
-          <h4>Tabella Oraria</h4>
-          <ul id="modal-tabella-oraria" style="padding-left:20px;"></ul>
-          <div style="margin-top:1.5rem; text-align:right;">
-            <button onclick="modificaAttivita()"
-              style="background:#f1c40f; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-              <i class="fa-solid fa-pen-to-square"></i> Modifica
-            </button>
-            <button onclick="eliminaAttivita()"
-              style="background:#e74c3c; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-              <i class="fa-solid fa-trash"></i> Elimina
-            </button>
-            <button onclick="chiudiModal()"
-              style="background:#7f8c8d; color:white; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-              <i class="fa-solid fa-xmark"></i> Chiudi
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- CALENDARIO -->
-      <section id="calendario" class="tab" style="display:none;">
-        <h2><i class="fa-solid fa-calendar-days"></i> Calendario Attività</h2>
-        <div id="calendar"></div>
-      </section>
-
-      <!-- MEMBRI -->
-      <section id="membri" class="tab" style="display:none;">
-        <h2><i class="fa-solid fa-users"></i> Membri</h2>
-        <div style="margin-bottom:1rem;">
-          <input type="text" id="nome-membro" placeholder="Nome">
-          <input type="text" id="cognome-membro" placeholder="Cognome">
-          <input type="number" id="anno-membro" placeholder="Anno">
-          <input type="text" id="ruolo-membro" placeholder="Ruolo">
-          <div id="container-obiettivi-membro"
-            style="margin-bottom:0.5rem;"></div>
-          <div
-            style="display:flex; gap:0.5rem; margin-bottom:0.5rem; align-items:center;">
-            <input type="text" id="titolo-obiettivo-membro"
-              placeholder="Titolo obiettivo" style="flex:3; height:32px;">
-            <input type="date" id="data-obiettivo-membro"
-              style="flex:1; height:32px;">
-            <button type="button" id="btn-aggiungi-obiettivo-membro"
-              style="background:#3498db; color:white; border:none; padding:0 0.7rem; font-size:0.95rem; border-radius:4px; cursor:pointer; height:32px; min-width:80px;">Aggiungi
-              obbiettivo</button>
-          </div>
-          <button type="button" id="btn-aggiungi-membro"
-            style="background:#2ecc71;"><i class="fa-solid fa-user-plus"></i>
-            Aggiungi Membro</button>
-        </div>
-        <h3>Tabella Membri</h3>
-        <table id="tabella-membri"
-          style="width:100%; border-collapse:collapse;">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Cognome</th>
-              <th>Anno</th>
-              <th>Ruolo</th>
-              <th>Obiettivi</th>
-              <th>Azioni</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-          <!-- MODALE MODIFICA MEMBRO -->
-          <div id="modal-modifica-membro"
-            style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-            <div
-              style="background:white; padding:2rem; border-radius:10px; width:400px; max-width:95%; position:relative;">
-              <button onclick="chiudiModalModificaMembro()"
-                style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:1.2rem; cursor:pointer;">
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-              <h3>Modifica Membro</h3>
-              <label>Nome:</label>
-              <input type="text" id="mod-nome-membro"
-                style="width:100%; margin-bottom:0.5rem;">
-              <label>Cognome:</label>
-              <input type="text" id="mod-cognome-membro"
-                style="width:100%; margin-bottom:0.5rem;">
-              <label>Anno:</label>
-              <input type="number" id="mod-anno-membro"
-                style="width:100%; margin-bottom:0.5rem;">
-              <label>Ruolo:</label>
-              <input type="text" id="mod-ruolo-membro"
-                style="width:100%; margin-bottom:0.5rem;">
-              <label>Obiettivi:</label>
-              <ul id="mod-lista-obiettivi"
-                style="margin-bottom:1rem; padding-left:1em;"></ul>
-              <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-                <input type="text" id="mod-nuovo-obiettivo"
-                  placeholder="Nuovo obiettivo" style="flex:1;">
-                <button onclick="aggiungiObiettivoModale()"
-                  style="background:#3498db; color:white; border:none; padding:0.4rem 1rem; border-radius:5px; cursor:pointer;">Aggiungi</button>
-              </div>
-              <button onclick="salvaModificaMembro()"
-                style="background:#27ae60; color:white; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer; width:100%;">Salva
-                Modifiche</button>
-            </div>
-          </div>
-        </table>
-
-        <!-- MODALE DETTAGLIO MEMBRO -->
-        <div id="modal-membro"
-          style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-          <div
-            style="background:white; padding:2rem; border-radius:10px; width:500px; max-width:95%; position:relative;">
-            <button onclick="chiudiModalMembro()"
-              style="position:absolute; top:10px; right:10px; border:none; background:none; font-size:1.2rem; cursor:pointer;">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
-            <h3>Dettagli Membro</h3>
-            <p><strong>Nome:</strong> <span id="modal-membro-nome"></span></p>
-            <p><strong>Cognome:</strong> <span
-                id="modal-membro-cognome"></span></p>
-            <p><strong>Email:</strong> <span id="modal-membro-email"></span></p>
-            <h4>Obiettivi Raggiunti</h4>
-            <ul id="modal-membro-obiettivi" style="padding-left:20px;"></ul>
-            <div style="margin-top:1.5rem; text-align:right;">
-              <button onclick="modificaMembro()"
-                style="background:#f1c40f; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-                <i class="fa-solid fa-pen-to-square"></i> Modifica
-              </button>
-              <button onclick="eliminaMembro()"
-                style="background:#e74c3c; color:white; margin-right:0.5rem; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-                <i class="fa-solid fa-trash"></i> Elimina
-              </button>
-              <button onclick="chiudiModalMembro()"
-                style="background:#7f8c8d; color:white; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer;">
-                <i class="fa-solid fa-xmark"></i> Chiudi
-              </button>
-              <button onclick="annullaModaleMembro()"
-                style="background:#bdc3c7; color:#2c3e50; border:none; padding:0.6rem 1rem; border-radius:5px; cursor:pointer; margin-left:0.5rem;">
-                <i class="fa-solid fa-ban"></i> Annulla
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- UTENTI (solo admin) -->
-      <section id="utenti" class="tab" style="display:none;">
-        <h2><i class="fa-solid fa-users"></i> Utenti</h2>
-        <input type="text" id="nome-utente" placeholder="Nome">
-        <input type="text" id="cognome-utente" placeholder="Cognome">
-        <input type="email" id="email-utente" placeholder="Email">
-        <button onclick="aggiungiUtente()" style="background:#2ecc71;"><i
-            class="fa-solid fa-user-plus"></i> Aggiungi Utente</button>
-        <h3>Obiettivi raggiunti per utente</h3>
-        <div id="obiettivi-utente-form" style="margin-bottom:1rem;">
-          <input type="email" id="email-utente-obiettivo"
-            placeholder="Email utente">
-          <input type="date" id="data-obiettivo-utente">
-          <input type="text" id="testo-obiettivo-utente"
-            placeholder="Obiettivo raggiunto">
-          <button onclick="aggiungiObiettivoUtente()"
-            style="background:#27ae60;">Aggiungi Obiettivo</button>
-        </div>
-        <ul id="lista-utenti"></ul>
-        <div id="obiettivi-utenti-list"></div>
-      </section>
-
-      <!-- IMPOSTAZIONI (solo admin) -->
-      <section id="impostazioni" class="tab" style="display:none;">
-        <h2><i class="fa-solid fa-gear"></i> Impostazioni</h2>
-        <div id="impostazioni-list"></div>
-        <h3>Aggiungi impostazione</h3>
-        <input type="text" id="chiave-impostazione" placeholder="Chiave">
-        <input type="text" id="valore-impostazione" placeholder="Valore">
-        <button onclick="aggiungiImpostazione()"
-          style="background:#2ecc71;">Aggiungi</button>
-      </section>
-    </div>
-
-  </body>
+        // Esegui il reindirizzamento con timeout di sicurezza
+        document.addEventListener('DOMContentLoaded', function() {
+            // Timeout di sicurezza per evitare che la pagina rimanga bloccata
+            const timeoutId = setTimeout(() => {
+                console.log('Timeout raggiunto, reindirizzamento forzato al login');
+                window.location.replace('login.html');
+            }, 3000); // 3 secondi di timeout
+            
+            redirect().finally(() => {
+                clearTimeout(timeoutId);
+            });
+        });
+    </script>
+</body>
 </html>

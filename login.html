@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Gestione attività</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen">
+        <div class="login-container">
+            <h1>Pianificatore Attività</h1>
+            <h2>Accesso alla pagina</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit">Accedi</button>
+            </form>
+            <div id="login-error" class="error-message"></div>
+            
+            <!-- Pulsante per forzare logout se necessario -->
+            <div style="margin-top: 20px; text-align: center;">
+                <button type="button" id="force-logout" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    Forza Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+</body>
+</html>

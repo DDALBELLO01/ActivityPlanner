@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione attività - Sistema di Gestione Attività</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="screen">
+        <div class="loading-container">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Caricamento in corso...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Screen -->
+    <div id="main-screen" class="screen" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>Gestione attività</h1>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="user-name">Nome Utente</span>
+                    <select id="unit-selector">
+                        <option value="">Seleziona Unità</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="attivita">Attività</button>
+            <button class="tab-button" data-tab="calendario">Calendario</button>
+            <button class="tab-button" data-tab="membri">Membri</button>
+            <button class="tab-button" data-tab="amministrazione" id="admin-tab" style="display: none;">Amministrazione</button>
+            <button class="tab-button" data-tab="gestione-sito" id="site-admin-tab" style="display: none;">Gestione Sito</button>
+            <button class="tab-button logout-tab" data-tab="logout" onclick="handleLogout()">Log-Out</button>
+        </nav>
+
+        <!-- Tab Content -->
+        <main class="content">
+            <!-- Attività Tab -->
+            <div id="attivita" class="tab-content active">
+                <div class="tab-header">
+                    <h2>Gestione Attività</h2>
+                    <button id="add-activity-btn" class="btn-primary">Aggiungi Attività</button>
+                </div>
+                <div id="activities-list" class="activities-list">
+                    <!-- Activities will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Calendario Tab -->
+            <div id="calendario" class="tab-content">
+                <div class="tab-header">
+                    <h2>Calendario Attività</h2>
+                    <div class="calendar-nav">
+                        <button id="prev-month">&lt;</button>
+                        <span id="current-month">Gennaio 2025</span>
+                        <button id="next-month">&gt;</button>
+                    </div>
+                </div>
+                <div id="calendar-container" class="calendar-container">
+                    <!-- Calendar will be generated here -->
+                </div>
+            </div>
+
+            <!-- Membri Tab -->
+            <div id="membri" class="tab-content">
+                <div class="tab-header">
+                    <h2>Gestione Membri</h2>
+                    <button id="add-member-btn" class="btn-primary">Aggiungi Membro</button>
+                </div>
+                <div id="members-list" class="members-list">
+                    <!-- Members will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Amministrazione Tab -->
+            <div id="amministrazione" class="tab-content">
+                <div class="tab-header">
+                    <h2>Amministrazione</h2>
+                </div>
+                <div class="admin-tabs">
+                    <button class="admin-tab-button active" data-admin-tab="impostazioni">Impostazioni</button>
+                    <button class="admin-tab-button" data-admin-tab="utenti">Utenti</button>
+                </div>
+                <div class="admin-content">
+                    <div id="impostazioni" class="admin-tab-content active">
+                        <h3>Impostazioni Unità</h3>
+                        <div id="settings-form">
+                            <!-- Settings will be loaded here -->
+                        </div>
+                    </div>
+                    <div id="utenti" class="admin-tab-content">
+                        <h3>Gestione Utenti</h3>
+                        <button id="add-user-btn" class="btn-primary">Aggiungi Utente</button>
+                        <div id="users-list">
+                            <!-- Users will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestione Sito Tab -->
+            <div id="gestione-sito" class="tab-content">
+                <div class="tab-header">
+                    <h2>Gestione Sito</h2>
+                </div>
+                <div class="site-admin-content">
+                    <div class="admin-section">
+                        <h3>Gestione Unità</h3>
+                        <button id="add-unit-btn" class="btn-primary">Aggiungi Unità</button>
+                        <div id="units-list">
+                            <!-- Units will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="admin-section">
+                        <h3>Utenti Sistema</h3>
+                        <div id="all-users-list">
+                            <!-- All users will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Activity Modal -->
+    <div id="activity-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="activity-modal-title">Aggiungi Attività</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="activity-form">
+                <div class="form-group">
+                    <label for="activity-title">Titolo:</label>
+                    <input type="text" id="activity-title" name="titolo" required>
+                </div>
+                <div class="form-group">
+                    <label for="activity-objectives">Obiettivi:</label>
+                    <textarea id="activity-objectives" name="obiettivi" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="activity-date">Data:</label>
+                    <input type="date" id="activity-date" name="data" required>
+                </div>
+                <div class="form-group">
+                    <label for="activity-achieved">Obiettivi Raggiunti:</label>
+                    <textarea id="activity-achieved" name="raggiunti" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Tabella Oraria:</label>
+                    <div id="schedule-table">
+                        <div class="schedule-header">
+                            <span>Ora</span>
+                            <span>Titolo</span>
+                            <span>Descrizione</span>
+                            <span>Gestore</span>
+                            <span>Azioni</span>
+                        </div>
+                        <div id="schedule-rows"></div>
+                        <button type="button" id="add-schedule-row" class="btn-secondary">Aggiungi Riga</button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('activity-modal')">Annulla</button>
+                    <button type="submit" class="btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Member Modal -->
+    <div id="member-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="member-modal-title">Aggiungi Membro</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="member-form">
+                <div class="form-group">
+                    <label for="member-name">Nome:</label>
+                    <input type="text" id="member-name" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="member-surname">Cognome:</label>
+                    <input type="text" id="member-surname" name="cognome" required>
+                </div>
+                <div class="form-group">
+                    <label for="member-year">Anno:</label>
+                    <input type="number" id="member-year" name="anno" required>
+                </div>
+                <div class="form-group">
+                    <label for="member-role">Ruolo:</label>
+                    <select id="member-role" name="ruolo" required>
+                        <option value="">Seleziona Ruolo</option>
+                        <option value="Capo">Capo</option>
+                        <option value="Aiuto">Aiuto</option>
+                        <option value="Rover">Rover</option>
+                        <option value="Scolte">Scolte</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Obiettivi Raggiunti:</label>
+                    <div id="objectives-list">
+                        <!-- Objectives will be managed here -->
+                    </div>
+                    <button type="button" id="add-objective-btn" class="btn-secondary">Aggiungi Obiettivo</button>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('member-modal')">Annulla</button>
+                    <button type="submit" class="btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Unit Modal -->
+    <div id="unit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="unit-modal-title">Aggiungi Unità</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="unit-form">
+                <div class="form-group">
+                    <label for="unit-name">Nome Unità:</label>
+                    <input type="text" id="unit-name" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="unit-leader">Capo Unità:</label>
+                    <select id="unit-leader" name="capo_unita">
+                        <option value="">Seleziona Capo Unità</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="unit-helpers">Aiuti:</label>
+                    <select id="unit-helpers" name="aiuti" multiple>
+                        <!-- Will be populated with users -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="unit-members">Numero Membri:</label>
+                    <input type="number" id="unit-members" name="nr_membri" min="0">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('unit-modal')">Annulla</button>
+                    <button type="submit" class="btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
