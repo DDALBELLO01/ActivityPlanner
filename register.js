@@ -47,21 +47,33 @@ async function handleRegistration(e) {
     }
 
     try {
-        // Registra l'utente con Supabase Auth
-        const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-                data: {
-                    nome: nome,
-                    cognome: cognome
-                }
-            }
+        // Registra l'utente con Supabase Auth usando la formula semplificata
+        const { data, error } = await supabaseClient.auth.signUp({ 
+            email: email, 
+            password: password 
         });
+        
+        if (error) {
+            errorElement.textContent = 'Errore durante la registrazione: ' + error.message;
+            errorElement.classList.add('show');
+            return;
+        }
 
-        if (error) throw error;
+        // Crea una riga nella tabella utenti con nome, cognome ed email
+        const { error: insertError } = await supabaseClient
+            .from('utenti')
+            .insert([{
+                nome: nome,
+                cognome: cognome,
+                email: email
+            }]);
 
-        successElement.textContent = 'Registrazione completata! Controlla la tua email per verificare l\'account. Verrai reindirizzato alla pagina di login tra pochi secondi...';
+        if (insertError) {
+            console.error('Errore inserimento nella tabella utenti:', insertError);
+            // Non blocchiamo il processo se l'inserimento fallisce
+        }
+
+        successElement.textContent = 'Registrazione completata con successo! Controlla la tua email per verificare l\'account. Verrai reindirizzato alla pagina di login tra pochi secondi...';
         successElement.style.display = 'block';
         
         // Reset del form
