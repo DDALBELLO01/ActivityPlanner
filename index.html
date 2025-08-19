@@ -136,7 +136,7 @@
     <input type="email" id="email" placeholder="Email">
     <input type="password" id="password" placeholder="Password">
     <button onclick="login()">Login</button>
-    <button onclick="signup()" style="background:#2ecc71;">Registrati</button>
+  <button id="btn-registrati" onclick="signup()" style="background:#2ecc71; display:none;">Registrati</button>
   </div>
 
   <!-- MAIN -->
@@ -206,7 +206,15 @@
       <input type="text" id="nome-membro" placeholder="Nome">
       <input type="text" id="cognome-membro" placeholder="Cognome">
       <button onclick="aggiungiMembro()" style="background:#2ecc71;"><i class="fa-solid fa-user-plus"></i> Aggiungi Membro</button>
+      <h3>Obiettivi raggiunti per membro</h3>
+      <div id="obiettivi-membro-form" style="margin-bottom:1rem;">
+        <input type="email" id="email-membro-obiettivo" placeholder="Email membro">
+        <input type="date" id="data-obiettivo-membro">
+        <input type="text" id="testo-obiettivo-membro" placeholder="Obiettivo raggiunto">
+        <button onclick="aggiungiObiettivoMembro()" style="background:#27ae60;">Aggiungi Obiettivo</button>
+      </div>
       <ul id="lista-membri"></ul>
+      <div id="obiettivi-membri-list"></div>
     </section>
   </div>
 
@@ -222,7 +230,19 @@
       const password = document.getElementById("password").value;
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if(error) alert(error.message);
-      else showMain();
+      else {
+        // Recupera info utente dalla tabella membri
+        const { data: utenti, error: errM } = await supabaseClient
+          .from('membri')
+          .select('admin')
+          .eq('email', email);
+        if (!errM && utenti && utenti.length > 0 && utenti[0].admin === true) {
+          document.getElementById('btn-registrati').style.display = '';
+        } else {
+          document.getElementById('btn-registrati').style.display = 'none';
+        }
+        showMain();
+      }
     }
 
     async function signup() {
@@ -449,11 +469,54 @@
       if(!error){
         const lista = document.getElementById("lista-membri");
         lista.innerHTML="";
+        const obiettiviDiv = document.getElementById("obiettivi-membri-list");
+        obiettiviDiv.innerHTML = "";
         data.forEach(m=>{
           const li = document.createElement("li");
-          li.textContent = m.nome + " " + m.cognome;
+          li.textContent = m.nome + " " + m.cognome + (m.email ? ` (${m.email})` : "");
           lista.appendChild(li);
+          // Visualizza obiettivi raggiunti
+          if(m.obiettivi_raggiunti && Array.isArray(m.obiettivi_raggiunti)){
+            const ul = document.createElement("ul");
+            ul.style.marginLeft = "1rem";
+            ul.style.marginBottom = "1rem";
+            ul.innerHTML = `<strong>Obiettivi di ${m.nome} ${m.cognome}:</strong>`;
+            m.obiettivi_raggiunti.forEach(obj => {
+              const oli = document.createElement("li");
+              oli.textContent = `${obj.data}: ${obj.obiettivo}`;
+              ul.appendChild(oli);
+            });
+            obiettiviDiv.appendChild(ul);
+          }
         });
+      }
+    }
+
+    async function aggiungiObiettivoMembro(){
+      const email = document.getElementById("email-membro-obiettivo").value;
+      const dataOb = document.getElementById("data-obiettivo-membro").value;
+      const testoOb = document.getElementById("testo-obiettivo-membro").value;
+      if(!email || !dataOb || !testoOb){
+        alert("Compila tutti i campi per aggiungere un obiettivo!");
+        return;
+      }
+      // Recupera membro
+      const { data: membri, error } = await supabaseClient.from('membri').select('id, obiettivi_raggiunti').eq('email', email);
+      if(error || !membri || membri.length === 0){
+        alert("Membro non trovato!");
+        return;
+      }
+      const membro = membri[0];
+      let obiettivi = Array.isArray(membro.obiettivi_raggiunti) ? membro.obiettivi_raggiunti : [];
+      obiettivi.push({ data: dataOb, obiettivo: testoOb });
+      // Aggiorna su Supabase
+      const { error: errUp } = await supabaseClient.from('membri').update({ obiettivi_raggiunti: obiettivi }).eq('id', membro.id);
+      if(errUp){
+        alert("Errore nel salvataggio: " + errUp.message);
+      } else {
+        document.getElementById("data-obiettivo-membro").value = "";
+        document.getElementById("testo-obiettivo-membro").value = "";
+        caricaMembri();
       }
     }
 
