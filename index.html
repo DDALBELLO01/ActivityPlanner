@@ -532,18 +532,6 @@
       }
     }
 
-    async function caricaMembri() {
-      const { data, error } = await supabaseClient.from('membri').select('*');
-      if (!error) {
-        const lista = document.getElementById("lista-membri");
-        lista.innerHTML = "";
-        data.forEach(m => {
-          const li = document.createElement("li");
-          li.innerHTML = `<span><i class=\"fa-solid fa-user\"></i> ${m.nome} ${m.cognome} - ${m.ruolo} (${m.anno})</span>`;
-          lista.appendChild(li);
-        });
-      }
-    }
 
   async function caricaAttivita() {
     const { data, error } = await supabaseClient.from('attivita').select('*');
