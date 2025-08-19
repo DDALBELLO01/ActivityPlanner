@@ -148,6 +148,8 @@ function setupEventListeners() {
     document.getElementById('activity-form').addEventListener('submit', handleActivitySubmit);
     document.getElementById('member-form').addEventListener('submit', handleMemberSubmit);
     document.getElementById('unit-form').addEventListener('submit', handleUnitSubmit);
+    document.getElementById('new-user-form')?.addEventListener('submit', handleNewUserSubmit);
+    document.getElementById('existing-user-form')?.addEventListener('submit', handleExistingUserSubmit);
 
     // Close modals
     document.querySelectorAll('.close').forEach(closeBtn => {
@@ -164,6 +166,10 @@ function setupEventListeners() {
     // Schedule table management
     document.getElementById('add-schedule-row').addEventListener('click', addScheduleRow);
     document.getElementById('add-objective-btn').addEventListener('click', addObjectiveRow);
+
+    // Admin buttons
+    document.getElementById('add-new-user-btn')?.addEventListener('click', () => showModal('new-user-modal'));
+    document.getElementById('add-existing-user-btn')?.addEventListener('click', () => showModal('existing-user-modal'));
 }
 
 // Funzione di logout globale
@@ -363,6 +369,16 @@ async function loadAvailableUnits() {
         if (!currentUser?.admin && currentUser?.unita_visibili && Array.isArray(currentUser.unita_visibili) && currentUser.unita_visibili.length > 0) {
             console.log('🔒 Applicando filtro per unità visibili:', currentUser.unita_visibili);
             query = query.in('id', currentUser.unita_visibili);
+        } else if (!currentUser?.admin) {
+            // Per utenti non admin, mostra solo le unità dove sono capo unità o aiuto
+            console.log('🔒 Filtrando per unità dove l\'utente è capo unità o aiuto');
+            const userEmail = currentUser?.email;
+            if (userEmail) {
+                query = query.or(`capo_unita.eq.${userEmail},aiuti.cs.{${userEmail}}`);
+            } else {
+                console.log('⚠️ Email utente non disponibile per il filtro');
+                return;
+            }
         } else if (!currentUser?.admin && (!currentUser?.unita_visibili || currentUser.unita_visibili.length === 0)) {
             console.log('⚠️ Utente non admin senza unità visibili - Nessuna unità sarà caricata');
             // Per utenti temporanei o senza unità, restituisce array vuoto
@@ -745,6 +761,8 @@ async function handleActivitySubmit(e) {
     }
 
     const formData = new FormData(e.target);
+    const activityId = formData.get('activity_id');
+    
     const activityData = {
         titolo: formData.get('titolo'),
         obiettivi: formData.get('obiettivi'),
@@ -755,15 +773,25 @@ async function handleActivitySubmit(e) {
     };
 
     try {
-        const { data, error } = await supabaseClient
-            .from('attivita')
-            .insert([activityData]);
+        let result;
+        if (activityId) {
+            // Update existing activity
+            result = await supabaseClient
+                .from('attivita')
+                .update(activityData)
+                .eq('id', activityId);
+        } else {
+            // Create new activity
+            result = await supabaseClient
+                .from('attivita')
+                .insert([activityData]);
+        }
 
-        if (error) throw error;
+        if (result.error) throw result.error;
 
         closeModal('activity-modal');
         loadActivities();
-        alert('Attività salvata con successo!');
+        alert(activityId ? 'Attività aggiornata con successo!' : 'Attività salvata con successo!');
     } catch (error) {
         console.error('Errore salvataggio attività:', error);
         alert('Errore nel salvataggio dell\'attività');
@@ -791,17 +819,7 @@ function getScheduleData() {
 
 function addScheduleRow() {
     const container = document.getElementById('schedule-rows');
-    const row = document.createElement('div');
-    row.className = 'schedule-row';
-    
-    row.innerHTML = `
-        <input type="time" placeholder="Ora">
-        <input type="text" placeholder="Titolo">
-        <input type="text" placeholder="Descrizione">
-        <input type="text" placeholder="Gestore">
-        <button type="button" class="btn-danger" onclick="this.parentElement.remove()">Rimuovi</button>
-    `;
-    
+    const row = createScheduleRow();
     container.appendChild(row);
 }
 
@@ -871,25 +889,38 @@ async function handleMemberSubmit(e) {
     }
 
     const formData = new FormData(e.target);
+    const memberId = formData.get('member_id');
+    
     const memberData = {
         nome: formData.get('nome'),
         cognome: formData.get('cognome'),
         anno: parseInt(formData.get('anno')),
-        ruolo: formData.get('ruolo'),
+        ruolo: formData.get('ruolo'), // Campo libero non vincolato
+        email: formData.get('email'),
         unita_id: currentUnit.id,
         obiettivi: JSON.stringify(getObjectivesData())
     };
 
     try {
-        const { data, error } = await supabaseClient
-            .from('membri')
-            .insert([memberData]);
+        let result;
+        if (memberId) {
+            // Update existing member
+            result = await supabaseClient
+                .from('membri')
+                .update(memberData)
+                .eq('id', memberId);
+        } else {
+            // Create new member
+            result = await supabaseClient
+                .from('membri')
+                .insert([memberData]);
+        }
 
-        if (error) throw error;
+        if (result.error) throw result.error;
 
         closeModal('member-modal');
         loadMembers();
-        alert('Membro salvato con successo!');
+        alert(memberId ? 'Membro aggiornato con successo!' : 'Membro salvato con successo!');
     } catch (error) {
         console.error('Errore salvataggio membro:', error);
         alert('Errore nel salvataggio del membro');
@@ -915,18 +946,7 @@ function getObjectivesData() {
 
 function addObjectiveRow() {
     const container = document.getElementById('objectives-list');
-    const row = document.createElement('div');
-    row.className = 'objective-row';
-    row.style.display = 'flex';
-    row.style.gap = '10px';
-    row.style.marginBottom = '10px';
-    
-    row.innerHTML = `
-        <input type="date" placeholder="Data" style="flex: 1;">
-        <input type="text" placeholder="Titolo Obiettivo" style="flex: 2;">
-        <button type="button" class="btn-danger" onclick="this.parentElement.remove()">Rimuovi</button>
-    `;
-    
+    const row = createObjectiveRow();
     container.appendChild(row);
 }
 
@@ -1048,6 +1068,8 @@ async function loadCalendarActivities() {
                 activityElement.className = 'calendar-activity';
                 activityElement.textContent = activity.titolo;
                 activityElement.title = activity.obiettivi || activity.titolo;
+                activityElement.style.cursor = 'pointer';
+                activityElement.onclick = () => viewActivity(activity.id);
                 dayContainer.appendChild(activityElement);
             }
         });
@@ -1070,16 +1092,20 @@ async function loadAdminData() {
 async function loadSiteAdmin() {
     if (!currentUser.admin) return;
     
-    // Carica tutte le unità per la gestione sito
+    // Carica tutte le unità indipendentemente da chi è il capo unità
     await loadAllUnits();
     await loadAllUsers();
 }
 
 async function loadAllUnits() {
     try {
+        // Carica tutte le unità con il conteggio dei membri
         const { data: units, error } = await supabaseClient
             .from('unita')
-            .select('*, capo_unita!inner(nome, cognome)')
+            .select(`
+                *,
+                membri_count:membri(count)
+            `)
             .order('nome');
 
         if (error) throw error;
@@ -1087,20 +1113,26 @@ async function loadAllUnits() {
         const container = document.getElementById('units-list');
         container.innerHTML = '';
 
-        units.forEach(unit => {
+        for (const unit of units) {
+            // Aggiorna il numero di membri nella tabella unità
+            await supabaseClient
+                .from('unita')
+                .update({ nr_membri: unit.membri_count[0].count })
+                .eq('id', unit.id);
+            
             const unitCard = document.createElement('div');
             unitCard.className = 'admin-section';
             unitCard.innerHTML = `
                 <h4>${unit.nome}</h4>
-                <p><strong>Capo Unità:</strong> ${unit.capo_unita?.nome} ${unit.capo_unita?.cognome}</p>
-                <p><strong>Membri:</strong> ${unit.nr_membri}</p>
+                <p><strong>Capo Unità:</strong> ${unit.capo_unita || 'Non assegnato'}</p>
+                <p><strong>Membri:</strong> ${unit.membri_count[0].count}</p>
                 <div class="activity-actions">
                     <button class="btn-edit" onclick="editUnit(${unit.id})">Modifica</button>
                     <button class="btn-danger" onclick="deleteUnit(${unit.id})">Elimina</button>
                 </div>
             `;
             container.appendChild(unitCard);
-        });
+        }
     } catch (error) {
         console.error('Errore caricamento unità:', error);
     }
@@ -1143,23 +1175,35 @@ async function handleUnitSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData(e.target);
+    const unitId = formData.get('unit_id');
+    
     const unitData = {
         nome: formData.get('nome'),
         capo_unita: formData.get('capo_unita') || null,
         nr_membri: parseInt(formData.get('nr_membri')) || 0,
-        aiuti: [] // Per ora array vuoto, da implementare la selezione multipla
+        aiuti: Array.from(document.getElementById('unit-helpers').selectedOptions).map(option => option.value)
     };
 
     try {
-        const { data, error } = await supabaseClient
-            .from('unita')
-            .insert([unitData]);
+        let result;
+        if (unitId) {
+            // Update existing unit
+            result = await supabaseClient
+                .from('unita')
+                .update(unitData)
+                .eq('id', unitId);
+        } else {
+            // Create new unit
+            result = await supabaseClient
+                .from('unita')
+                .insert([unitData]);
+        }
 
-        if (error) throw error;
+        if (result.error) throw result.error;
 
         closeModal('unit-modal');
         loadAllUnits();
-        alert('Unità salvata con successo!');
+        alert(unitId ? 'Unità aggiornata con successo!' : 'Unità salvata con successo!');
     } catch (error) {
         console.error('Errore salvataggio unità:', error);
         alert('Errore nel salvataggio dell\'unità');
@@ -1180,10 +1224,38 @@ function showModal(modalId) {
         if (modalId === 'activity-modal') {
             document.getElementById('schedule-rows').innerHTML = '';
             addScheduleRow(); // Aggiungi una riga iniziale
+            
+            // Reset form fields for new activity
+            const inputs = form.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => input.disabled = false);
+            form.querySelector('button[type="submit"]').style.display = 'inline-block';
+            form.querySelector('.btn-secondary').textContent = 'Annulla';
+            document.getElementById('activity-modal-title').textContent = 'Aggiungi Attività';
+            
+            // Remove any existing activity ID
+            const idInput = form.querySelector('input[name="activity_id"]');
+            if (idInput) idInput.remove();
         }
         
         if (modalId === 'member-modal') {
             document.getElementById('objectives-list').innerHTML = '';
+            addObjectiveRow(); // Aggiungi una riga iniziale
+            
+            // Reset for new member
+            document.getElementById('member-modal-title').textContent = 'Aggiungi Membro';
+            const idInput = form.querySelector('input[name="member_id"]');
+            if (idInput) idInput.remove();
+        }
+        
+        if (modalId === 'existing-user-modal') {
+            loadAvailableUsersForUnit();
+        }
+        
+        if (modalId === 'unit-modal') {
+            loadUsersForUnitForm();
+            // Remove any existing unit ID for new unit
+            const idInput = form.querySelector('input[name="unit_id"]');
+            if (idInput) idInput.remove();
         }
     }
 }
@@ -1194,13 +1266,123 @@ function closeModal(modalId) {
 
 // Funzioni di utility per CRUD operations (da implementare)
 async function viewActivity(id) {
-    // Implementa visualizzazione attività
-    console.log('Visualizza attività:', id);
+    try {
+        const { data: activity, error } = await supabaseClient
+            .from('attivita')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        // Popola il modal con i dati dell'attività
+        document.getElementById('activity-title').value = activity.titolo;
+        document.getElementById('activity-objectives').value = activity.obiettivi || '';
+        document.getElementById('activity-date').value = activity.data;
+        document.getElementById('activity-achieved').value = activity.raggiunti || '';
+        document.getElementById('activity-modal-title').textContent = 'Visualizza Attività';
+
+        // Popola la tabella oraria
+        const scheduleContainer = document.getElementById('schedule-rows');
+        scheduleContainer.innerHTML = '';
+        
+        if (activity.tabella_oraria) {
+            const schedule = JSON.parse(activity.tabella_oraria);
+            schedule.forEach(item => {
+                const row = createScheduleRow(item);
+                scheduleContainer.appendChild(row);
+            });
+        }
+
+        // Disabilita tutti i campi per solo visualizzazione
+        const form = document.getElementById('activity-form');
+        const inputs = form.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => input.disabled = true);
+
+        // Nasconde il pulsante salva e mostra solo chiudi
+        form.querySelector('button[type="submit"]').style.display = 'none';
+        form.querySelector('.btn-secondary').textContent = 'Chiudi';
+
+        showModal('activity-modal');
+    } catch (error) {
+        console.error('Errore visualizzazione attività:', error);
+        alert('Errore nella visualizzazione dell\'attività');
+    }
 }
 
 async function editActivity(id) {
-    // Implementa modifica attività
-    console.log('Modifica attività:', id);
+    try {
+        const { data: activity, error } = await supabaseClient
+            .from('attivita')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        // Popola il modal con i dati dell'attività
+        document.getElementById('activity-title').value = activity.titolo;
+        document.getElementById('activity-objectives').value = activity.obiettivi || '';
+        document.getElementById('activity-date').value = activity.data;
+        document.getElementById('activity-achieved').value = activity.raggiunti || '';
+        document.getElementById('activity-modal-title').textContent = 'Modifica Attività';
+
+        // Popola la tabella oraria
+        const scheduleContainer = document.getElementById('schedule-rows');
+        scheduleContainer.innerHTML = '';
+        
+        if (activity.tabella_oraria) {
+            const schedule = JSON.parse(activity.tabella_oraria);
+            schedule.forEach(item => {
+                const row = createScheduleRow(item);
+                scheduleContainer.appendChild(row);
+            });
+        } else {
+            addScheduleRow(); // Aggiungi una riga vuota
+        }
+
+        // Abilita tutti i campi per modifica
+        const form = document.getElementById('activity-form');
+        const inputs = form.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => input.disabled = false);
+
+        // Mostra il pulsante salva
+        form.querySelector('button[type="submit"]').style.display = 'inline-block';
+        form.querySelector('.btn-secondary').textContent = 'Annulla';
+
+        // Aggiungi l'ID dell'attività al form per l'update
+        let idInput = form.querySelector('input[name="activity_id"]');
+        if (!idInput) {
+            idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'activity_id';
+            form.appendChild(idInput);
+        }
+        idInput.value = id;
+
+        showModal('activity-modal');
+    } catch (error) {
+        console.error('Errore modifica attività:', error);
+        alert('Errore nella modifica dell\'attività');
+    }
+}
+
+function createScheduleRow(data = {}) {
+    const row = document.createElement('div');
+    row.className = 'schedule-row';
+    row.style.display = 'flex';
+    row.style.gap = '10px';
+    row.style.marginBottom = '10px';
+    
+    row.innerHTML = `
+        <input type="time" value="${data.orario || ''}" placeholder="Ora" style="flex: 1;">
+        <input type="text" value="${data.tipo || ''}" placeholder="Titolo" style="flex: 2;">
+        <input type="text" value="${data.descrizione || ''}" placeholder="Descrizione" style="flex: 3;">
+        <input type="text" value="${data.gestore || ''}" placeholder="Gestore" style="flex: 2;">
+        <button type="button" class="btn-danger" onclick="this.parentElement.remove()">Rimuovi</button>
+    `;
+    
+    return row;
 }
 
 async function deleteActivity(id) {
@@ -1223,8 +1405,213 @@ async function deleteActivity(id) {
 }
 
 async function editMember(id) {
-    // Implementa modifica membro
-    console.log('Modifica membro:', id);
+    try {
+        const { data: member, error } = await supabaseClient
+            .from('membri')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        // Popola il modal con i dati del membro
+        document.getElementById('member-name').value = member.nome;
+        document.getElementById('member-surname').value = member.cognome;
+        document.getElementById('member-year').value = member.anno;
+        document.getElementById('member-role').value = member.ruolo || '';
+        document.getElementById('member-email').value = member.email || '';
+        document.getElementById('member-modal-title').textContent = 'Modifica Membro';
+
+        // Popola gli obiettivi
+        const objectivesContainer = document.getElementById('objectives-list');
+        objectivesContainer.innerHTML = '';
+        
+        if (member.obiettivi && Array.isArray(member.obiettivi)) {
+            member.obiettivi.forEach(objective => {
+                const row = createObjectiveRow(objective);
+                objectivesContainer.appendChild(row);
+            });
+        } else {
+            addObjectiveRow(); // Aggiungi una riga vuota
+        }
+
+        // Aggiungi l'ID del membro al form per l'update
+        const form = document.getElementById('member-form');
+        let idInput = form.querySelector('input[name="member_id"]');
+        if (!idInput) {
+            idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'member_id';
+            form.appendChild(idInput);
+        }
+        idInput.value = id;
+
+        showModal('member-modal');
+    } catch (error) {
+        console.error('Errore modifica membro:', error);
+        alert('Errore nella modifica del membro');
+    }
+}
+
+function createObjectiveRow(data = {}) {
+    const row = document.createElement('div');
+    row.className = 'objective-row';
+    row.style.display = 'flex';
+    row.style.gap = '10px';
+    row.style.marginBottom = '10px';
+    
+    row.innerHTML = `
+        <input type="date" value="${data.data || ''}" placeholder="Data" style="flex: 1;">
+        <input type="text" value="${data.titolo || ''}" placeholder="Titolo Obiettivo" style="flex: 2;">
+        <button type="button" class="btn-danger" onclick="this.parentElement.remove()">Rimuovi</button>
+    `;
+    
+    return row;
+}
+
+// Gestione form nuovo utente
+async function handleNewUserSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const userData = {
+        email: formData.get('email'),
+        password: formData.get('password')
+    };
+    
+    const memberData = {
+        nome: formData.get('nome'),
+        cognome: formData.get('cognome'),
+        email: formData.get('email'),
+        unita_id: currentUnit?.id,
+        admin: false
+    };
+
+    try {
+        // Crea l'utente in Supabase Auth
+        const { data: authData, error: authError } = await supabaseClient.auth.signUp(userData);
+        
+        if (authError) throw authError;
+
+        // Aggiungi il membro alla tabella membri
+        const { error: memberError } = await supabaseClient
+            .from('membri')
+            .insert([memberData]);
+
+        if (memberError) throw memberError;
+
+        closeModal('new-user-modal');
+        loadAdminData();
+        alert('Nuovo utente creato con successo!');
+    } catch (error) {
+        console.error('Errore creazione utente:', error);
+        alert('Errore nella creazione dell\'utente: ' + error.message);
+    }
+}
+
+// Gestione form utente esistente
+async function handleExistingUserSubmit(e) {
+    e.preventDefault();
+    
+    if (!currentUnit) {
+        alert('Nessuna unità selezionata');
+        return;
+    }
+    
+    const formData = new FormData(e.target);
+    const userId = formData.get('user_id');
+    
+    try {
+        // Aggiorna l'utente aggiungendo l'unità corrente alle unità visibili
+        const { data: existingUser, error: fetchError } = await supabaseClient
+            .from('membri')
+            .select('unita_visibili')
+            .eq('id', userId)
+            .single();
+            
+        if (fetchError) throw fetchError;
+        
+        let unitaVisibili = existingUser.unita_visibili || [];
+        if (!unitaVisibili.includes(currentUnit.id)) {
+            unitaVisibili.push(currentUnit.id);
+        }
+        
+        const { error: updateError } = await supabaseClient
+            .from('membri')
+            .update({ unita_visibili: unitaVisibili, unita_id: currentUnit.id })
+            .eq('id', userId);
+
+        if (updateError) throw updateError;
+
+        closeModal('existing-user-modal');
+        loadAdminData();
+        alert('Utente aggiunto all\'unità con successo!');
+    } catch (error) {
+        console.error('Errore aggiunta utente:', error);
+        alert('Errore nell\'aggiunta dell\'utente: ' + error.message);
+    }
+}
+
+// Carica utenti disponibili per l'aggiunta
+async function loadAvailableUsersForUnit() {
+    try {
+        if (!currentUnit) return;
+        
+        // Carica utenti che non sono capo unità o aiuti dell'unità corrente
+        const { data: users, error } = await supabaseClient
+            .from('membri')
+            .select('id, nome, cognome, email')
+            .neq('email', currentUnit.capo_unita)
+            .not('email', 'in', `(${(currentUnit.aiuti || []).map(email => `"${email}"`).join(',')})`);
+
+        if (error) throw error;
+
+        const select = document.getElementById('existing-user-select');
+        select.innerHTML = '<option value="">Seleziona utente</option>';
+        
+        users.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.id;
+            option.textContent = `${user.nome} ${user.cognome} (${user.email})`;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Errore caricamento utenti disponibili:', error);
+    }
+}
+
+// Carica utenti per il form unità
+async function loadUsersForUnitForm() {
+    try {
+        const { data: users, error } = await supabaseClient
+            .from('membri')
+            .select('email, nome, cognome')
+            .order('cognome');
+
+        if (error) throw error;
+
+        const leaderSelect = document.getElementById('unit-leader');
+        const helpersSelect = document.getElementById('unit-helpers');
+        
+        leaderSelect.innerHTML = '<option value="">Seleziona Capo Unità</option>';
+        helpersSelect.innerHTML = '';
+        
+        users.forEach(user => {
+            // Capo unità
+            const leaderOption = document.createElement('option');
+            leaderOption.value = user.email;
+            leaderOption.textContent = `${user.nome} ${user.cognome} (${user.email})`;
+            leaderSelect.appendChild(leaderOption);
+            
+            // Aiuti
+            const helperOption = document.createElement('option');
+            helperOption.value = user.email;
+            helperOption.textContent = `${user.nome} ${user.cognome} (${user.email})`;
+            helpersSelect.appendChild(helperOption);
+        });
+    } catch (error) {
+        console.error('Errore caricamento utenti per form unità:', error);
+    }
 }
 
 async function deleteMember(id) {
@@ -1247,8 +1634,42 @@ async function deleteMember(id) {
 }
 
 async function editUnit(id) {
-    // Implementa modifica unità
-    console.log('Modifica unità:', id);
+    try {
+        const { data: unit, error } = await supabaseClient
+            .from('unita')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        // Popola il modal con i dati dell'unità
+        document.getElementById('unit-name').value = unit.nome;
+        document.getElementById('unit-members').value = unit.nr_membri || 0;
+
+        // Carica gli utenti disponibili per capo unità e aiuti
+        await loadUsersForUnitForm();
+        
+        if (unit.capo_unita) {
+            document.getElementById('unit-leader').value = unit.capo_unita;
+        }
+
+        // Aggiungi l'ID dell'unità al form per l'update
+        const form = document.getElementById('unit-form');
+        let idInput = form.querySelector('input[name="unit_id"]');
+        if (!idInput) {
+            idInput = document.createElement('input');
+            idInput.type = 'hidden';
+            idInput.name = 'unit_id';
+            form.appendChild(idInput);
+        }
+        idInput.value = id;
+
+        showModal('unit-modal');
+    } catch (error) {
+        console.error('Errore modifica unità:', error);
+        alert('Errore nella modifica dell\'unità');
+    }
 }
 
 async function deleteUnit(id) {

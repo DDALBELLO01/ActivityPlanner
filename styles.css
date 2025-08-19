@@ -327,6 +327,17 @@ button[type="submit"]:hover {
     overflow-y: auto;
 }
 
+/* Activity modal full page */
+#activity-modal .modal-content {
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    overflow-y: auto;
+}
+
 .modal-header {
     padding: 20px 30px;
     border-bottom: 1px solid #ddd;

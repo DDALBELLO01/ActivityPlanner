@@ -102,7 +102,10 @@
                     </div>
                     <div id="utenti" class="admin-tab-content">
                         <h3>Gestione Utenti</h3>
-                        <button id="add-user-btn" class="btn-primary">Aggiungi Utente</button>
+                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <button id="add-new-user-btn" class="btn-primary">Aggiungi Nuovo Utente</button>
+                            <button id="add-existing-user-btn" class="btn-secondary">Aggiungi Utente Esistente</button>
+                        </div>
                         <div id="users-list">
                             <!-- Users will be loaded here -->
                         </div>
@@ -203,13 +206,11 @@
                 </div>
                 <div class="form-group">
                     <label for="member-role">Ruolo:</label>
-                    <select id="member-role" name="ruolo" required>
-                        <option value="">Seleziona Ruolo</option>
-                        <option value="Capo">Capo</option>
-                        <option value="Aiuto">Aiuto</option>
-                        <option value="Rover">Rover</option>
-                        <option value="Scolte">Scolte</option>
-                    </select>
+                    <input type="text" id="member-role" name="ruolo" placeholder="Inserisci ruolo">
+                </div>
+                <div class="form-group">
+                    <label for="member-email">Email:</label>
+                    <input type="email" id="member-email" name="email" placeholder="Inserisci email">
                 </div>
                 <div class="form-group">
                     <label>Obiettivi Raggiunti:</label>
@@ -257,6 +258,60 @@
                 <div class="modal-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal('unit-modal')">Annulla</button>
                     <button type="submit" class="btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New User Modal -->
+    <div id="new-user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Aggiungi Nuovo Utente</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="new-user-form">
+                <div class="form-group">
+                    <label for="new-user-name">Nome:</label>
+                    <input type="text" id="new-user-name" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-user-surname">Cognome:</label>
+                    <input type="text" id="new-user-surname" name="cognome" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-user-email">Email:</label>
+                    <input type="email" id="new-user-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-user-password">Password:</label>
+                    <input type="password" id="new-user-password" name="password" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('new-user-modal')">Annulla</button>
+                    <button type="submit" class="btn-primary">Crea Utente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Existing User Modal -->
+    <div id="existing-user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Aggiungi Utente Esistente</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="existing-user-form">
+                <div class="form-group">
+                    <label for="existing-user-select">Seleziona Utente:</label>
+                    <select id="existing-user-select" name="user_id" required>
+                        <option value="">Caricamento utenti...</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('existing-user-modal')">Annulla</button>
+                    <button type="submit" class="btn-primary">Aggiungi Utente</button>
                 </div>
             </form>
         </div>
