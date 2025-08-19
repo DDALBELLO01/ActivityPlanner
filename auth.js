@@ -159,6 +159,11 @@ function handleURLMessages() {
         errorElement.classList.remove('error-message');
         errorElement.classList.add('info-message');
         errorElement.classList.add('show');
+    } else if (message === 'registration-success') {
+        errorElement.textContent = '✅ Registrazione completata con successo! Controlla la tua email per verificare l\'account, poi effettua il login.';
+        errorElement.classList.remove('error-message');
+        errorElement.classList.add('success-message');
+        errorElement.classList.add('show');
     } else if (error) {
         let errorMessage = 'Si è verificato un errore. ';
         switch (error) {

@@ -659,6 +659,13 @@ button[type="submit"]:hover {
     animation: slideIn 0.3s ease-out;
 }
 
+/* Quando l'elemento error viene utilizzato per messaggi di successo */
+.error-message.success-message {
+    background: #d4edda;
+    color: #155724;
+    border-left: 4px solid #28a745;
+}
+
 @keyframes slideIn {
     from {
         opacity: 0;
