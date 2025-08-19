@@ -72,12 +72,6 @@ function handleRegistrationParameters() {
 // Setup event listeners
 function setupLoginListeners() {
     document.getElementById('login-form').addEventListener('submit', handleLogin);
-    
-    // Aggiungi listener per il pulsante di logout forzato
-    const forceLogoutBtn = document.getElementById('force-logout');
-    if (forceLogoutBtn) {
-        forceLogoutBtn.addEventListener('click', forceLogout);
-    }
 }
 
 // Gestisce il login
@@ -196,27 +190,5 @@ function handleURLMessages() {
     if (message || error || event) {
         const newURL = window.location.protocol + "//" + window.location.host + window.location.pathname;
         window.history.pushState({path: newURL}, '', newURL);
-    }
-}
-
-// Forza il logout anche se ci sono problemi con la sessione
-async function forceLogout() {
-    try {
-        console.log('Forzando logout...');
-        await supabaseClient.auth.signOut();
-        
-        // Pulisce anche il local storage per sicurezza
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Ricarica la pagina per assicurarsi che tutto sia resettato
-        window.location.reload();
-    } catch (error) {
-        console.error('Errore durante logout forzato:', error);
-        
-        // Anche se il logout fallisce, pulisci i dati locali
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.reload();
     }
 }
