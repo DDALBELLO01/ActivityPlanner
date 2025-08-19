@@ -54,7 +54,16 @@ async function handleRegistration(e) {
         });
         
         if (error) {
-            errorElement.textContent = 'Errore durante la registrazione: ' + error.message;
+            console.error('Errore dettagliato signup:', error);
+            let errorMessage = 'Errore durante la registrazione: ';
+            
+            if (error.message.includes('Signups not allowed')) {
+                errorMessage += 'Le registrazioni non sono abilitate. Contatta l\'amministratore del sistema.';
+            } else {
+                errorMessage += error.message;
+            }
+            
+            errorElement.textContent = errorMessage;
             errorElement.classList.add('show');
             return;
         }
