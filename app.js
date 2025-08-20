@@ -90,6 +90,7 @@ async function loadUserData(user) {
                     nome: user.user_metadata?.nome || user.email.split('@')[0] || 'Nome',
                     cognome: user.user_metadata?.cognome || 'Utente',
                     admin: false,
+                    capo_unita: false,
                     unita_associate: []
                 };
                 
@@ -119,9 +120,12 @@ async function loadUserData(user) {
 
         console.log('🔐 Configurazione permessi UI...');
         // Configurazione permessi UI
+        // Mostra tab amministrazione se l'utente è admin o capo unità
+        const hasAdminAccess = userData.admin || userData.capo_unita;
         document.getElementById('admin-tab').style.display = 
-            userData.admin ? 'block' : 'none';
+            hasAdminAccess ? 'block' : 'none';
         
+        // Mostra gestione sito solo per admin completi
         document.getElementById('site-admin-tab').style.display = 
             userData.admin ? 'block' : 'none';
 
@@ -154,15 +158,15 @@ async function loadAvailableUnits() {
         let query = supabaseClient.from('unita').select('*');
         let shouldLoadUnits = false;
         
-        // ADMIN: può vedere tutte le unità
-        if (currentUser?.admin === true) {
-            console.log('👑 Utente ADMIN - carica tutte le unità');
+        // ADMIN COMPLETI: possono vedere tutte le unità
+        if (isFullAdmin()) {
+            console.log('👑 Utente ADMIN COMPLETO - carica tutte le unità');
             shouldLoadUnits = true;
-            // Query senza filtri per admin
+            // Query senza filtri per admin completi
         }
-        // TUTTI GLI ALTRI UTENTI: verifica unita_associate
+        // TUTTI GLI ALTRI UTENTI (inclusi capi unità): verifica unita_associate
         else {
-            console.log('👤 Utente NON-ADMIN - verifica unità associate');
+            console.log('👤 Utente NON-ADMIN o CAPO-UNITÀ - verifica unità associate');
             console.log('🔍 currentUser.unita_associate:', currentUser?.unita_associate);
             console.log('🔍 È un array:', Array.isArray(currentUser?.unita_associate));
             
@@ -483,7 +487,7 @@ async function handleUnitChange() {
                     await loadCalendar();
                     break;
                 case 'amministrazione':
-                    if (currentUser?.admin) {
+                    if (hasAdminAccess()) {
                         console.log('👑 Ricaricamento dati admin...');
                         await loadAdminData();
                     }
@@ -502,6 +506,16 @@ async function handleUnitChange() {
 }
 
 // === UTILITY FUNCTIONS ===
+
+// Funzione per verificare se un utente ha accesso amministrativo
+function hasAdminAccess(user = currentUser) {
+    return user?.admin || user?.capo_unita;
+}
+
+// Funzione per verificare se un utente è admin completo
+function isFullAdmin(user = currentUser) {
+    return user?.admin === true;
+}
 
 // Funzione per convertire array di ID misti (stringhe/numeri) in array di numeri
 function convertUnitsToNumbers(unitsArray) {
@@ -540,6 +554,7 @@ function debugUnitSelector() {
     console.log('  - currentUnit:', currentUnit);
     console.log('  - currentUser:', currentUser);
     console.log('  - currentUser admin:', currentUser?.admin);
+    console.log('  - currentUser capo_unita:', currentUser?.capo_unita);
     console.log('  - currentUser unità associate:', currentUser?.unita_associate, '(tipo:', Array.isArray(currentUser?.unita_associate) ? 'array' : typeof currentUser?.unita_associate, ')');
     if (Array.isArray(currentUser?.unita_associate)) {
         console.log('  - Array length:', currentUser.unita_associate.length);
@@ -551,18 +566,63 @@ function debugUnitSelector() {
     // Test delle condizioni logiche
     console.log('  - Test condizioni logiche:');
     console.log('    - currentUser?.admin === true:', currentUser?.admin === true);
+    console.log('    - currentUser?.capo_unita === true:', currentUser?.capo_unita === true);
+    console.log('    - hasAdminAccess():', hasAdminAccess());
+    console.log('    - isFullAdmin():', isFullAdmin());
     console.log('    - currentUser?.unita_associate exists:', !!currentUser?.unita_associate);
     console.log('    - Array.isArray(currentUser?.unita_associate):', Array.isArray(currentUser?.unita_associate));
     console.log('    - currentUser.unita_associate.length > 0:', currentUser?.unita_associate?.length > 0);
     
-    const condition1 = currentUser?.admin === true;
+    const condition1 = isFullAdmin();
     const condition2 = currentUser?.unita_associate && Array.isArray(currentUser.unita_associate) && currentUser.unita_associate.length > 0;
-    console.log('    - ADMIN condition result:', condition1);
+    console.log('    - FULL ADMIN condition result:', condition1);
     console.log('    - USER condition result:', condition2);
     console.log('    - Should load units:', condition1 || condition2);
 }
 
-// Funzione globale per testare il unit-selector dalla console del browser
+// Funzione globale per testare i permessi amministrativi
+window.testAdminPermissions = function() {
+    console.log('🧪 TEST PERMESSI AMMINISTRATIVI');
+    console.log('👤 currentUser:', currentUser);
+    
+    if (currentUser) {
+        console.log('  - Email:', currentUser.email);
+        console.log('  - Admin flag:', currentUser.admin);
+        console.log('  - Capo unità flag:', currentUser.capo_unita);
+        console.log('  - hasAdminAccess():', hasAdminAccess());
+        console.log('  - isFullAdmin():', isFullAdmin());
+        
+        console.log('  - Tab Amministrazione visibile:', 
+            document.getElementById('admin-tab').style.display !== 'none');
+        console.log('  - Tab Gestione Sito visibile:', 
+            document.getElementById('site-admin-tab').style.display !== 'none');
+    } else {
+        console.log('❌ currentUser non disponibile');
+    }
+};
+
+// Funzione globale per simulare un utente capo unità
+// Funzione globale per simulare un utente capo unità
+window.simulateCapoUnita = function(isCapo = true) {
+    console.log('🧪 SIMULAZIONE CAPO UNITÀ:', isCapo);
+    if (currentUser) {
+        currentUser.capo_unita = isCapo;
+        
+        // Aggiorna la visibilità delle tab
+        const hasAdminAccess = currentUser.admin || currentUser.capo_unita;
+        document.getElementById('admin-tab').style.display = 
+            hasAdminAccess ? 'block' : 'none';
+        
+        console.log('✅ Simulazione applicata');
+        console.log('  - capo_unita:', currentUser.capo_unita);
+        console.log('  - hasAdminAccess():', hasAdminAccess);
+        console.log('  - Tab Amministrazione visibile:', 
+            document.getElementById('admin-tab').style.display !== 'none');
+    } else {
+        console.log('❌ currentUser non disponibile');
+    }
+};
+
 window.testUnitSelector = function() {
     console.log('🧪 TEST unit-selector manuale');
     debugUnitSelector();
@@ -1216,8 +1276,9 @@ async function loadMembers() {
 
 async function loadAdminData() {
     console.log('👑 loadAdminData chiamata');
-    if (!currentUser?.admin) {
-        console.log('⚠️ Utente non admin');
+    const hasAdminAccess = currentUser?.admin || currentUser?.capo_unita;
+    if (!hasAdminAccess) {
+        console.log('⚠️ Utente non admin né capo unità');
         return;
     }
     // Carica di default il tab impostazioni
