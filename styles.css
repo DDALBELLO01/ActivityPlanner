@@ -304,6 +304,31 @@ button[type="submit"]:hover {
     background: #c82333;
 }
 
+.btn-equal {
+    min-width: 90px !important;
+    width: 90px !important;
+    text-align: center !important;
+    justify-content: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+    font-size: 12px !important;
+}
+
+.member-actions {
+    display: flex !important;
+    gap: 10px !important;
+    margin-top: 15px !important;
+    justify-content: flex-start !important;
+}
+
+.member-actions .btn-equal {
+    flex: 0 0 90px !important;
+    width: 90px !important;
+    min-width: 90px !important;
+}
+
 /* Modal Styles */
 .modal {
     display: none;
@@ -531,6 +556,39 @@ button[type="submit"]:hover {
     margin-bottom: 5px;
 }
 
+.calendar-day.has-activities {
+    background: #e8f5e8 !important;
+    border-left: 4px solid #4caf50;
+}
+
+.day-activities {
+    margin-top: 5px;
+}
+
+.activity-preview {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.activity-preview.clickable {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.activity-preview.clickable:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4c93 100%);
+}
+
 .calendar-activity {
     background: #667eea;
     color: white;
@@ -541,6 +599,85 @@ button[type="submit"]:hover {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Activity Details Modal */
+.modal-content-large {
+    max-width: 800px !important;
+    width: 90% !important;
+    padding: 30px !important;
+}
+
+.activity-details {
+    padding: 30px 0;
+}
+
+.detail-group {
+    margin-bottom: 25px;
+}
+
+.detail-group label {
+    display: block;
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.detail-group p {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin: 0;
+    line-height: 1.6;
+    font-size: 15px;
+}
+
+.schedule-view {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.schedule-item:last-child {
+    border-bottom: none;
+}
+
+.schedule-time {
+    font-weight: bold;
+    color: #667eea;
+    min-width: 70px;
+    font-size: 14px;
+}
+
+.schedule-type {
+    font-weight: 500;
+    color: #333;
+    min-width: 120px;
+    font-size: 14px;
+}
+
+.schedule-desc {
+    color: #666;
+    flex: 1;
+    font-size: 14px;
+}
+
+.schedule-manager {
+    color: #999;
+    font-style: italic;
+    min-width: 120px;
+    font-size: 14px;
 }
 
 /* Admin Tabs */

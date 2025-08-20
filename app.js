@@ -499,6 +499,16 @@ function clearActivityForm() {
     if (scheduleRows) {
         scheduleRows.innerHTML = '';
     }
+    
+    // Reset modalità modifica
+    const form = document.getElementById('activity-form');
+    const modalTitle = document.getElementById('activity-modal-title');
+    if (form) {
+        delete form.dataset.editId;
+    }
+    if (modalTitle) {
+        modalTitle.textContent = 'Aggiungi Attività';
+    }
 }
 
 function clearMemberForm() {
@@ -511,6 +521,16 @@ function clearMemberForm() {
     const objectivesList = document.getElementById('objectives-list');
     if (objectivesList) {
         objectivesList.innerHTML = '';
+    }
+    
+    // Reset modalità modifica
+    const form = document.getElementById('member-form');
+    const modalTitle = document.getElementById('member-modal-title');
+    if (form) {
+        delete form.dataset.editId;
+    }
+    if (modalTitle) {
+        modalTitle.textContent = 'Aggiungi Membro';
     }
 }
 
@@ -655,7 +675,6 @@ async function loadActivities() {
         // Genera HTML per le attività
         const activitiesHtml = activities.map(activity => {
             const dataFormattata = new Date(activity.data).toLocaleDateString('it-IT');
-            const tabellaOraria = activity.tabella_oraria || [];
             
             return `
                 <div class="activity-card">
@@ -666,18 +685,9 @@ async function loadActivities() {
                     <div class="activity-content">
                         ${activity.obiettivi ? `<p><strong>Obiettivi:</strong> ${activity.obiettivi}</p>` : ''}
                         ${activity.raggiunti ? `<p><strong>Raggiunti:</strong> ${activity.raggiunti}</p>` : ''}
-                        ${tabellaOraria.length > 0 ? `
-                            <div class="schedule-preview">
-                                <strong>Programma:</strong>
-                                <ul>
-                                    ${tabellaOraria.map(slot => `
-                                        <li>${slot.orario} - ${slot.tipo} ${slot.descrizione ? `(${slot.descrizione})` : ''} ${slot.gestore ? `- ${slot.gestore}` : ''}</li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        ` : ''}
                     </div>
                     <div class="activity-actions">
+                        <button class="btn-primary" onclick="viewActivity(${activity.id})">Visualizza</button>
                         <button class="btn-secondary" onclick="editActivity(${activity.id})">Modifica</button>
                         <button class="btn-danger" onclick="deleteActivity(${activity.id})">Elimina</button>
                     </div>
@@ -787,7 +797,11 @@ async function loadCalendar() {
             if (dayActivities.length > 0) {
                 calendarHtml += '<div class="day-activities">';
                 dayActivities.forEach(activity => {
-                    calendarHtml += `<div class="activity-preview" title="${activity.titolo}">${activity.titolo}</div>`;
+                    calendarHtml += `<div class="activity-preview clickable" 
+                        onclick="viewActivity(${activity.id})" 
+                        title="Clicca per visualizzare: ${activity.titolo}">
+                        ${activity.titolo}
+                    </div>`;
                 });
                 calendarHtml += '</div>';
             }
@@ -848,17 +862,30 @@ async function loadMembers() {
         
         // Genera HTML per i membri
         const membersHtml = members.map(member => {
-            const obiettivi = member.obiettivi || [];
+            // Gestisci obiettivi che potrebbe essere stringa JSON o array
+            let obiettivi = [];
+            try {
+                if (member.obiettivi) {
+                    if (typeof member.obiettivi === 'string') {
+                        obiettivi = JSON.parse(member.obiettivi);
+                    } else if (Array.isArray(member.obiettivi)) {
+                        obiettivi = member.obiettivi;
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Errore parsing obiettivi per membro', member.id, ':', error);
+                obiettivi = [];
+            }
             
             return `
                 <div class="member-card">
                     <div class="member-header">
                         <h3>${member.nome} ${member.cognome}</h3>
-                        <span class="member-role">${member.ruolo || 'Membro'}</span>
+                        <span class="member-role"><strong>Ruolo:</strong> ${member.ruolo || 'Membro'}</span>
                     </div>
                     <div class="member-content">
                         <p><strong>Anno:</strong> ${member.anno}</p>
-                        ${obiettivi.length > 0 ? `
+                        ${Array.isArray(obiettivi) && obiettivi.length > 0 ? `
                             <div class="objectives-preview">
                                 <strong>Obiettivi:</strong>
                                 <ul>
@@ -870,8 +897,8 @@ async function loadMembers() {
                         ` : ''}
                     </div>
                     <div class="member-actions">
-                        <button class="btn-secondary" onclick="editMember(${member.id})">Modifica</button>
-                        <button class="btn-danger" onclick="deleteMember(${member.id})">Elimina</button>
+                        <button class="btn-secondary btn-equal" onclick="editMember(${member.id})">Modifica</button>
+                        <button class="btn-danger btn-equal" onclick="deleteMember(${member.id})">Elimina</button>
                     </div>
                 </div>
             `;
@@ -1175,6 +1202,7 @@ async function handleActivitySubmit(e) {
     try {
         const form = e.target;
         const formData = new FormData(form);
+        const isEdit = form.dataset.editId; // Verifica se siamo in modalità modifica
         
         // Raccogli dati dalla tabella oraria
         const scheduleRows = document.querySelectorAll('#schedule-rows .schedule-row');
@@ -1201,13 +1229,26 @@ async function handleActivitySubmit(e) {
             unita_id: currentUnit.id
         };
         
-        console.log('💾 Salvataggio attività:', activityData);
+        console.log(isEdit ? '✏️ Modifica attività:' : '💾 Salvataggio attività:', activityData);
         
-        const { data, error } = await supabaseClient
-            .from('attivita')
-            .insert([activityData])
-            .select();
-            
+        let result;
+        if (isEdit) {
+            // Modalità modifica
+            result = await supabaseClient
+                .from('attivita')
+                .update(activityData)
+                .eq('id', isEdit)
+                .select();
+        } else {
+            // Modalità creazione
+            result = await supabaseClient
+                .from('attivita')
+                .insert([activityData])
+                .select();
+        }
+        
+        const { data, error } = result;
+        
         if (error) {
             console.error('❌ Errore salvataggio attività:', error);
             alert('Errore nel salvataggio: ' + error.message);
@@ -1215,12 +1256,13 @@ async function handleActivitySubmit(e) {
         }
         
         console.log('✅ Attività salvata:', data);
-        alert('Attività salvata con successo!');
+        alert(isEdit ? 'Attività modificata con successo!' : 'Attività salvata con successo!');
         
         // Chiudi modal e aggiorna lista
         closeModal('activity-modal');
         clearActivityForm();
         await loadActivities();
+        await loadCalendar(); // Aggiorna anche il calendario
         
     } catch (error) {
         console.error('💥 Errore handleActivitySubmit:', error);
@@ -1240,6 +1282,7 @@ async function handleMemberSubmit(e) {
     try {
         const form = e.target;
         const formData = new FormData(form);
+        const isEdit = form.dataset.editId; // Verifica se siamo in modalità modifica
         
         // Raccogli obiettivi
         const objectiveRows = document.querySelectorAll('#objectives-list .objective-row');
@@ -1264,13 +1307,26 @@ async function handleMemberSubmit(e) {
             unita_id: currentUnit.id
         };
         
-        console.log('💾 Salvataggio membro:', memberData);
+        console.log(isEdit ? '✏️ Modifica membro:' : '💾 Salvataggio membro:', memberData);
         
-        const { data, error } = await supabaseClient
-            .from('membri')
-            .insert([memberData])
-            .select();
-            
+        let result;
+        if (isEdit) {
+            // Modalità modifica
+            result = await supabaseClient
+                .from('membri')
+                .update(memberData)
+                .eq('id', isEdit)
+                .select();
+        } else {
+            // Modalità creazione
+            result = await supabaseClient
+                .from('membri')
+                .insert([memberData])
+                .select();
+        }
+        
+        const { data, error } = result;
+        
         if (error) {
             console.error('❌ Errore salvataggio membro:', error);
             alert('Errore nel salvataggio: ' + error.message);
@@ -1278,15 +1334,17 @@ async function handleMemberSubmit(e) {
         }
         
         console.log('✅ Membro salvato:', data);
-        alert('Membro salvato con successo!');
+        alert(isEdit ? 'Membro modificato con successo!' : 'Membro salvato con successo!');
         
         // Chiudi modal e aggiorna lista
         closeModal('member-modal');
         clearMemberForm();
         await loadMembers();
         
-        // Aggiorna contatore membri nell'unità
-        await updateUnitMemberCount();
+        // Aggiorna contatore membri nell'unità (solo per nuovi membri)
+        if (!isEdit) {
+            await updateUnitMemberCount();
+        }
         
     } catch (error) {
         console.error('💥 Errore handleMemberSubmit:', error);
@@ -1476,8 +1534,8 @@ function navigateMonth(direction) {
     loadCalendar();
 }
 
-function addScheduleRow() {
-    console.log('➕ addScheduleRow chiamata');
+function addScheduleRow(orario = '', tipo = '', descrizione = '', gestore = '') {
+    console.log('➕ addScheduleRow chiamata con valori:', { orario, tipo, descrizione, gestore });
     const scheduleRows = document.getElementById('schedule-rows');
     if (!scheduleRows) {
         console.error('❌ schedule-rows non trovato');
@@ -1490,10 +1548,10 @@ function addScheduleRow() {
     rowDiv.dataset.rowId = rowId;
     
     rowDiv.innerHTML = `
-        <input type="time" name="orario" placeholder="HH:MM" required>
-        <input type="text" name="tipo" placeholder="Titolo" required>
-        <input type="text" name="descrizione" placeholder="Descrizione">
-        <input type="text" name="gestore" placeholder="Gestore">
+        <input type="time" name="orario" placeholder="HH:MM" value="${orario}" required>
+        <input type="text" name="tipo" placeholder="Titolo" value="${tipo}" required>
+        <input type="text" name="descrizione" placeholder="Descrizione" value="${descrizione}">
+        <input type="text" name="gestore" placeholder="Gestore" value="${gestore}">
         <button type="button" class="btn-danger btn-small" onclick="removeScheduleRow(${rowId})">Rimuovi</button>
     `;
     
@@ -1511,6 +1569,11 @@ function removeScheduleRow(rowId) {
 
 function addObjectiveRow() {
     console.log('➕ addObjectiveRow chiamata');
+    addObjective('', '');
+}
+
+function addObjective(titolo = '', data = '') {
+    console.log('➕ addObjective chiamata con valori:', { titolo, data });
     const objectivesList = document.getElementById('objectives-list');
     if (!objectivesList) {
         console.error('❌ objectives-list non trovato');
@@ -1524,8 +1587,8 @@ function addObjectiveRow() {
     
     objectiveDiv.innerHTML = `
         <div class="objective-inputs">
-            <input type="text" name="titolo" placeholder="Titolo obiettivo" required>
-            <input type="date" name="data" required>
+            <input type="text" name="titolo" placeholder="Titolo obiettivo" value="${titolo}" required>
+            <input type="date" name="data" value="${data}" required>
             <button type="button" class="btn-danger btn-small" onclick="removeObjectiveRow(${rowId})">Rimuovi</button>
         </div>
     `;
@@ -1554,8 +1617,169 @@ function closeModal(modalId) {
 // Funzioni CRUD per attività
 async function editActivity(activityId) {
     console.log('✏️ Modifica attività:', activityId);
-    // TODO: implementare modifica attività
-    alert('Funzione in sviluppo');
+    
+    try {
+        // Carica i dati dell'attività dal database
+        const { data: activity, error } = await supabaseClient
+            .from('attivita')
+            .select('*')
+            .eq('id', activityId)
+            .single();
+            
+        if (error) {
+            console.error('❌ Errore caricamento attività:', error);
+            alert('Errore nel caricamento dell\'attività: ' + error.message);
+            return;
+        }
+        
+        if (!activity) {
+            alert('Attività non trovata');
+            return;
+        }
+        
+        // Popola il form con i dati esistenti
+        document.getElementById('activity-title').value = activity.titolo || '';
+        document.getElementById('activity-objectives').value = activity.obiettivi || '';
+        document.getElementById('activity-date').value = activity.data || '';
+        document.getElementById('activity-achieved').value = activity.raggiunti || '';
+        
+        // Gestisci tabella oraria
+        let tabellaOraria = [];
+        try {
+            if (activity.tabella_oraria) {
+                if (typeof activity.tabella_oraria === 'string') {
+                    tabellaOraria = JSON.parse(activity.tabella_oraria);
+                } else if (Array.isArray(activity.tabella_oraria)) {
+                    tabellaOraria = activity.tabella_oraria;
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Errore parsing tabella_oraria:', error);
+            tabellaOraria = [];
+        }
+        
+        // Pulisci e popola la tabella oraria
+        const scheduleRows = document.getElementById('schedule-rows');
+        scheduleRows.innerHTML = '';
+        
+        if (tabellaOraria.length > 0) {
+            tabellaOraria.forEach(slot => {
+                addScheduleRow(slot.orario || '', slot.tipo || '', slot.descrizione || '', slot.gestore || '');
+            });
+        }
+        
+        // Imposta il form in modalità modifica
+        const modal = document.getElementById('activity-modal');
+        const modalTitle = document.getElementById('activity-modal-title');
+        const form = document.getElementById('activity-form');
+        
+        modalTitle.textContent = 'Modifica Attività';
+        form.dataset.editId = activityId;
+        
+        // Mostra il modal
+        modal.style.display = 'block';
+        
+    } catch (error) {
+        console.error('💥 Errore editActivity:', error);
+        alert('Errore imprevisto: ' + error.message);
+    }
+}
+
+async function viewActivity(activityId) {
+    console.log('👁️ Visualizza attività:', activityId);
+    
+    try {
+        // Carica i dati dell'attività dal database
+        const { data: activity, error } = await supabaseClient
+            .from('attivita')
+            .select('*')
+            .eq('id', activityId)
+            .single();
+            
+        if (error) {
+            console.error('❌ Errore caricamento attività:', error);
+            alert('Errore nel caricamento dell\'attività: ' + error.message);
+            return;
+        }
+        
+        if (!activity) {
+            alert('Attività non trovata');
+            return;
+        }
+        
+        // Gestisci tabella oraria
+        let tabellaOraria = [];
+        try {
+            if (activity.tabella_oraria) {
+                if (typeof activity.tabella_oraria === 'string') {
+                    tabellaOraria = JSON.parse(activity.tabella_oraria);
+                } else if (Array.isArray(activity.tabella_oraria)) {
+                    tabellaOraria = activity.tabella_oraria;
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Errore parsing tabella_oraria:', error);
+            tabellaOraria = [];
+        }
+        
+        const dataFormattata = new Date(activity.data).toLocaleDateString('it-IT');
+        
+        // Crea il popup di visualizzazione
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content modal-content-large">
+                <div class="modal-header">
+                    <h3>Dettagli Attività</h3>
+                    <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+                </div>
+                <div class="activity-details">
+                    <div class="detail-group">
+                        <label><strong>Titolo:</strong></label>
+                        <p>${activity.titolo}</p>
+                    </div>
+                    <div class="detail-group">
+                        <label><strong>Data:</strong></label>
+                        <p>${dataFormattata}</p>
+                    </div>
+                    ${activity.obiettivi ? `
+                        <div class="detail-group">
+                            <label><strong>Obiettivi:</strong></label>
+                            <p>${activity.obiettivi}</p>
+                        </div>
+                    ` : ''}
+                    ${activity.raggiunti ? `
+                        <div class="detail-group">
+                            <label><strong>Obiettivi Raggiunti:</strong></label>
+                            <p>${activity.raggiunti}</p>
+                        </div>
+                    ` : ''}
+                    ${tabellaOraria.length > 0 ? `
+                        <div class="detail-group">
+                            <label><strong>Programma della Giornata:</strong></label>
+                            <div class="schedule-view">
+                                ${tabellaOraria.map(slot => `
+                                    <div class="schedule-item">
+                                        <span class="schedule-time">${slot.orario}</span>
+                                        <span class="schedule-type">${slot.tipo}</span>
+                                        ${slot.descrizione ? `<span class="schedule-desc">${slot.descrizione}</span>` : ''}
+                                        ${slot.gestore ? `<span class="schedule-manager">- ${slot.gestore}</span>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+    } catch (error) {
+        console.error('💥 Errore viewActivity:', error);
+        alert('Errore imprevisto: ' + error.message);
+    }
 }
 
 async function deleteActivity(activityId) {
@@ -1585,8 +1809,72 @@ async function deleteActivity(activityId) {
 // Funzioni CRUD per membri
 async function editMember(memberId) {
     console.log('✏️ Modifica membro:', memberId);
-    // TODO: implementare modifica membro
-    alert('Funzione in sviluppo');
+    
+    try {
+        // Carica i dati del membro dal database
+        const { data: member, error } = await supabaseClient
+            .from('membri')
+            .select('*')
+            .eq('id', memberId)
+            .single();
+            
+        if (error) {
+            console.error('❌ Errore caricamento membro:', error);
+            alert('Errore nel caricamento del membro: ' + error.message);
+            return;
+        }
+        
+        if (!member) {
+            alert('Membro non trovato');
+            return;
+        }
+        
+        // Popola il form con i dati esistenti
+        document.getElementById('member-name').value = member.nome || '';
+        document.getElementById('member-surname').value = member.cognome || '';
+        document.getElementById('member-year').value = member.anno || '';
+        document.getElementById('member-role').value = member.ruolo || '';
+        
+        // Gestisci obiettivi
+        let obiettivi = [];
+        try {
+            if (member.obiettivi) {
+                if (typeof member.obiettivi === 'string') {
+                    obiettivi = JSON.parse(member.obiettivi);
+                } else if (Array.isArray(member.obiettivi)) {
+                    obiettivi = member.obiettivi;
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ Errore parsing obiettivi:', error);
+            obiettivi = [];
+        }
+        
+        // Pulisci e popola la lista degli obiettivi
+        const objectivesList = document.getElementById('objectives-list');
+        objectivesList.innerHTML = '';
+        
+        if (obiettivi.length > 0) {
+            obiettivi.forEach(obiettivo => {
+                addObjective(obiettivo.titolo || '', obiettivo.data || '');
+            });
+        }
+        
+        // Imposta il form in modalità modifica
+        const modal = document.getElementById('member-modal');
+        const modalTitle = document.getElementById('member-modal-title');
+        const form = document.getElementById('member-form');
+        
+        modalTitle.textContent = 'Modifica Membro';
+        form.dataset.editId = memberId;
+        
+        // Mostra il modal
+        modal.style.display = 'block';
+        
+    } catch (error) {
+        console.error('💥 Errore editMember:', error);
+        alert('Errore imprevisto: ' + error.message);
+    }
 }
 
 async function deleteMember(memberId) {
