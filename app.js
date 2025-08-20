@@ -37,6 +37,10 @@ async function initializeApp() {
         console.log('🔧 Setup event listeners...');
         setupEventListeners();
         
+        // Debug finale del unit-selector
+        console.log('🔍 Debug finale unit-selector...');
+        debugUnitSelector();
+        
         console.log('🎉 Inizializzazione completata!');
         
     } catch (error) {
@@ -138,33 +142,68 @@ async function loadAvailableUnits() {
         console.log('🏢 Inizio caricamento unità per utente:', currentUser?.email);
         console.log('👑 Admin:', currentUser?.admin, 'Unità associate:', currentUser?.unita_associate);
         
+        const unitSelector = document.getElementById('unit-selector');
+        if (!unitSelector) {
+            console.error('❌ Elemento unit-selector non trovato nel DOM!');
+            return;
+        }
+        
+        // Reset dropdown
+        unitSelector.innerHTML = '<option value="">Caricamento unità...</option>';
+        
         let query = supabaseClient.from('unita').select('*');
+        let shouldLoadUnits = false;
         
         // ADMIN: può vedere tutte le unità
         if (currentUser?.admin === true) {
             console.log('👑 Utente ADMIN - carica tutte le unità');
+            shouldLoadUnits = true;
             // Query senza filtri per admin
         }
-        // TUTTI GLI ALTRI UTENTI: usa campo unita_associate
-        else if (currentUser?.unita_associate && Array.isArray(currentUser.unita_associate) && currentUser.unita_associate.length > 0) {
-            console.log('🔍 Filtro unità tramite unita_associate:', currentUser.unita_associate);
-            query = query.in('id', currentUser.unita_associate);
-        }
-        // UTENTE SENZA UNITÀ ASSOCIATE
+        // TUTTI GLI ALTRI UTENTI: verifica unita_associate
         else {
-            console.log('⚠️ Utente senza unità associate (array vuoto o null)');
-            const unitSelector = document.getElementById('unit-selector');
-            if (unitSelector) {
-                unitSelector.innerHTML = '<option value="">Nessuna unità disponibili</option>';
+            console.log('👤 Utente NON-ADMIN - verifica unità associate');
+            console.log('🔍 currentUser.unita_associate:', currentUser?.unita_associate);
+            console.log('🔍 È un array:', Array.isArray(currentUser?.unita_associate));
+            
+            if (currentUser?.unita_associate && Array.isArray(currentUser.unita_associate)) {
+                console.log('🔍 Lunghezza array:', currentUser.unita_associate.length);
+                
+                if (currentUser.unita_associate.length > 0) {
+                    console.log('✅ Utente ha unità associate - filtro query');
+                    // Converti le stringhe in numeri per la query
+                    const unitIds = currentUser.unita_associate.map(id => parseInt(id, 10));
+                    console.log('🔢 IDs convertiti in numeri:', unitIds);
+                    console.log('🔍 Applicando filtro .in("id", unitIds)...');
+                    query = query.in('id', unitIds);
+                    console.log('🔍 Query dopo filtro:', query);
+                    shouldLoadUnits = true;
+                } else {
+                    console.log('⚠️ Array unità vuoto');
+                }
+            } else {
+                console.log('⚠️ unita_associate non è un array valido');
             }
+        }
+        
+        // Se non dobbiamo caricare unità, mostra messaggio e esci
+        if (!shouldLoadUnits) {
+            console.log('❌ Condizioni non soddisfatte - nessuna unità da caricare');
+            unitSelector.innerHTML = '<option value="">Nessuna unità disponibile</option>';
             return;
         }
         
         console.log('📊 Esecuzione query unità...');
+        console.log('🔍 Query finale costruita:', query);
+        console.log('🔍 Parametri query - Admin:', currentUser?.admin, 'IDs da cercare:', currentUser?.unita_associate);
+        
         const { data: units, error } = await query.order('nome');
+        
+        console.log('🔍 Risultato query - Error:', error, 'Units found:', units?.length);
 
         if (error) {
             console.error('❌ Errore query unità:', error);
+            unitSelector.innerHTML = '<option value="">Errore caricamento unità</option>';
             throw error;
         }
 
@@ -172,16 +211,17 @@ async function loadAvailableUnits() {
         if (units?.length > 0) {
             units.forEach(unit => console.log('  - ID:', unit.id, 'Nome:', unit.nome));
         }
-
-        const unitSelector = document.getElementById('unit-selector');
-        if (!unitSelector) {
-            console.error('❌ Elemento unit-selector non trovato nel DOM!');
-            return;
-        }
         
-        console.log('🎨 Popolamento dropdown unità...');
+        // Reset dropdown con opzione di default
         unitSelector.innerHTML = '<option value="">Seleziona Unità</option>';
 
+        if (!units || units.length === 0) {
+            unitSelector.innerHTML = '<option value="">Nessuna unità disponibile</option>';
+            console.log('⚠️ Nessuna unità trovata per questo utente');
+            return;
+        }
+
+        // Popola dropdown
         units.forEach(unit => {
             const option = document.createElement('option');
             option.value = unit.id;
@@ -190,19 +230,26 @@ async function loadAvailableUnits() {
             console.log('➕ Aggiunta unità al dropdown:', unit.nome);
         });
 
-        // Selezione automatica prima unità se disponibile
-        if (units.length > 0) {
-            console.log('🎯 Selezione automatica prima unità:', units[0].nome);
+        // Selezione automatica prima unità se è l'unica disponibile
+        if (units.length === 1) {
+            console.log('🎯 Selezione automatica unica unità disponibile:', units[0].nome);
             unitSelector.value = units[0].id;
-            await handleUnitChange();
+            // Attendi un momento prima di chiamare handleUnitChange per assicurarsi che tutto sia inizializzato
+            setTimeout(async () => {
+                await handleUnitChange();
+            }, 100);
         } else {
-            console.log('⚠️ Nessuna unità disponibile per la selezione automatica');
+            console.log('📋 Unità multiple disponibili - attesa selezione utente');
         }
         
         console.log('✅ Caricamento unità completato');
         
     } catch (error) {
         console.error('💥 Errore caricamento unità:', error);
+        const unitSelector = document.getElementById('unit-selector');
+        if (unitSelector) {
+            unitSelector.innerHTML = '<option value="">Errore caricamento</option>';
+        }
         throw error;
     }
 }
@@ -241,10 +288,12 @@ function setupEventListeners() {
         // Unit selector
         const unitSelector = document.getElementById('unit-selector');
         if (unitSelector) {
+            // Rimuovi event listeners esistenti per evitare duplicati
+            unitSelector.removeEventListener('change', handleUnitChange);
             unitSelector.addEventListener('change', handleUnitChange);
             console.log('✅ Event listener unit-selector aggiunto');
         } else {
-            console.warn('⚠️ unit-selector non trovato');
+            console.warn('⚠️ unit-selector non trovato nel DOM');
         }
 
         // Forms
@@ -360,19 +409,37 @@ function setupEventListeners() {
     }
 }
 
-// Funzioni placeholder per evitare errori
+// Funzione per gestire il cambio di unità
 async function handleUnitChange() {
     try {
         console.log('🔄 handleUnitChange chiamata');
-        const unitId = document.getElementById('unit-selector')?.value;
+        const unitSelector = document.getElementById('unit-selector');
+        
+        if (!unitSelector) {
+            console.error('❌ unit-selector non trovato nel DOM!');
+            return;
+        }
+        
+        const unitId = unitSelector.value;
+        console.log('🏢 Unità selezionata ID:', unitId);
         
         if (!unitId) {
             currentUnit = null;
-            console.log('⚠️ Nessuna unità selezionata');
+            console.log('⚠️ Nessuna unità selezionata - reset dati');
+            
+            // Reset dei contenuti quando nessuna unità è selezionata
+            const activitiesList = document.getElementById('activities-list');
+            const membersList = document.getElementById('members-list');
+            const calendarContainer = document.getElementById('calendar-container');
+            
+            if (activitiesList) activitiesList.innerHTML = '<p>Seleziona un\'unità per visualizzare le attività</p>';
+            if (membersList) membersList.innerHTML = '<p>Seleziona un\'unità per visualizzare i membri</p>';
+            if (calendarContainer) calendarContainer.innerHTML = '<p>Seleziona un\'unità per visualizzare il calendario</p>';
+            
             return;
         }
 
-        console.log('🏢 Caricamento dati unità ID:', unitId);
+        console.log('🏢 Caricamento dati per unità ID:', unitId);
         
         const { data: unit, error } = await supabaseClient
             .from('unita')
@@ -382,7 +449,14 @@ async function handleUnitChange() {
 
         if (error) {
             console.error('❌ Errore caricamento unità:', error);
-            throw error;
+            alert('Errore nel caricamento dell\'unità: ' + error.message);
+            return;
+        }
+
+        if (!unit) {
+            console.error('❌ Unità non trovata nel database');
+            alert('Unità non trovata nel database');
+            return;
         }
 
         currentUnit = unit;
@@ -393,23 +467,247 @@ async function handleUnitChange() {
         if (activeTab) {
             const tabId = activeTab.id;
             console.log('🔄 Ricaricamento dati per tab attivo:', tabId);
+            
+            // Mostra indicatore di caricamento se necessario
             switch (tabId) {
                 case 'attivita':
+                    console.log('📊 Ricaricamento attività...');
                     await loadActivities();
                     break;
                 case 'membri':
+                    console.log('👥 Ricaricamento membri...');
                     await loadMembers();
                     break;
                 case 'calendario':
+                    console.log('📅 Ricaricamento calendario...');
                     await loadCalendar();
                     break;
+                case 'amministrazione':
+                    if (currentUser?.admin) {
+                        console.log('👑 Ricaricamento dati admin...');
+                        await loadAdminData();
+                    }
+                    break;
+                default:
+                    console.log('⚠️ Tab non riconosciuto per ricaricamento:', tabId);
             }
+        } else {
+            console.log('⚠️ Nessun tab attivo trovato');
         }
         
     } catch (error) {
         console.error('💥 Errore handleUnitChange:', error);
+        alert('Errore imprevisto nel cambio unità: ' + error.message);
     }
 }
+
+// === UTILITY FUNCTIONS ===
+
+// Funzione per convertire array di ID misti (stringhe/numeri) in array di numeri
+function convertUnitsToNumbers(unitsArray) {
+    if (!Array.isArray(unitsArray)) return [];
+    return unitsArray.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+}
+
+// Funzione per convertire array di ID misti (stringhe/numeri) in array di stringhe
+function convertUnitsToStrings(unitsArray) {
+    if (!Array.isArray(unitsArray)) return [];
+    return unitsArray.map(id => id.toString());
+}
+
+// Funzione per verificare se un utente ha accesso a un'unità
+function userHasAccessToUnit(user, unitId) {
+    if (!user?.unita_associate || !Array.isArray(user.unita_associate)) return false;
+    const unitIdStr = unitId.toString();
+    return user.unita_associate.includes(unitIdStr);
+}
+
+// Funzione di debug per verificare lo stato del unit-selector
+function debugUnitSelector() {
+    const unitSelector = document.getElementById('unit-selector');
+    console.log('🔍 DEBUG unit-selector:');
+    console.log('  - Elemento trovato:', !!unitSelector);
+    if (unitSelector) {
+        console.log('  - Valore corrente:', unitSelector.value, '(tipo:', typeof unitSelector.value, ')');
+        console.log('  - Numero opzioni:', unitSelector.options.length);
+        console.log('  - Opzioni disponibili:');
+        for (let i = 0; i < unitSelector.options.length; i++) {
+            const option = unitSelector.options[i];
+            console.log(`    ${i}: value="${option.value}" (tipo: ${typeof option.value}), text="${option.textContent}"`);
+        }
+        console.log('  - Event listeners:', unitSelector.cloneNode().outerHTML);
+    }
+    console.log('  - currentUnit:', currentUnit);
+    console.log('  - currentUser:', currentUser);
+    console.log('  - currentUser admin:', currentUser?.admin);
+    console.log('  - currentUser unità associate:', currentUser?.unita_associate, '(tipo:', Array.isArray(currentUser?.unita_associate) ? 'array' : typeof currentUser?.unita_associate, ')');
+    if (Array.isArray(currentUser?.unita_associate)) {
+        console.log('  - Array length:', currentUser.unita_associate.length);
+        currentUser.unita_associate.forEach((unit, index) => {
+            console.log(`    ${index}: "${unit}" (tipo: ${typeof unit})`);
+        });
+    }
+    
+    // Test delle condizioni logiche
+    console.log('  - Test condizioni logiche:');
+    console.log('    - currentUser?.admin === true:', currentUser?.admin === true);
+    console.log('    - currentUser?.unita_associate exists:', !!currentUser?.unita_associate);
+    console.log('    - Array.isArray(currentUser?.unita_associate):', Array.isArray(currentUser?.unita_associate));
+    console.log('    - currentUser.unita_associate.length > 0:', currentUser?.unita_associate?.length > 0);
+    
+    const condition1 = currentUser?.admin === true;
+    const condition2 = currentUser?.unita_associate && Array.isArray(currentUser.unita_associate) && currentUser.unita_associate.length > 0;
+    console.log('    - ADMIN condition result:', condition1);
+    console.log('    - USER condition result:', condition2);
+    console.log('    - Should load units:', condition1 || condition2);
+}
+
+// Funzione globale per testare il unit-selector dalla console del browser
+window.testUnitSelector = function() {
+    console.log('🧪 TEST unit-selector manuale');
+    debugUnitSelector();
+    
+    console.log('🧪 Test cambio unità programmativo...');
+    const unitSelector = document.getElementById('unit-selector');
+    if (unitSelector && unitSelector.options.length > 1) {
+        const testValue = unitSelector.options[1].value;
+        console.log('🧪 Cambio a unità ID:', testValue);
+        unitSelector.value = testValue;
+        
+        // Simula l'evento change
+        const event = new Event('change', { bubbles: true });
+        unitSelector.dispatchEvent(event);
+    }
+};
+
+// Funzione globale per ricaricare le unità
+window.reloadUnits = async function() {
+    console.log('🔄 Ricaricamento unità manuale...');
+    try {
+        await loadAvailableUnits();
+        debugUnitSelector();
+    } catch (error) {
+        console.error('❌ Errore ricaricamento:', error);
+    }
+};
+
+// Funzione globale per testare direttamente la query delle unità
+window.testUnitQuery = async function() {
+    console.log('🧪 TEST QUERY UNITÀ DIRETTA');
+    
+    if (!currentUser) {
+        console.log('❌ currentUser non disponibile');
+        return;
+    }
+    
+    console.log('👤 Utente corrente:', currentUser.email);
+    console.log('🏢 Unità associate:', currentUser.unita_associate);
+    
+    try {
+        // Test 1: Query senza filtri (tutte le unità)
+        console.log('🧪 Test 1: Tutte le unità nel database');
+        const { data: allUnits, error: allError } = await supabaseClient
+            .from('unita')
+            .select('*')
+            .order('nome');
+            
+        if (allError) {
+            console.error('❌ Errore query tutte le unità:', allError);
+        } else {
+            console.log('✅ Tutte le unità trovate:', allUnits?.length || 0);
+            if (allUnits) {
+                allUnits.forEach(unit => {
+                    console.log(`  - ID: ${unit.id} (tipo: ${typeof unit.id}), Nome: ${unit.nome}`);
+                });
+            }
+        }
+        
+        // Test 2: Query con filtro numerico
+        const unitIds = currentUser.unita_associate.map(id => parseInt(id, 10));
+        console.log('🧪 Test 2: Query con filtro numerico:', unitIds);
+        const { data: numericUnits, error: numericError } = await supabaseClient
+            .from('unita')
+            .select('*')
+            .in('id', unitIds)
+            .order('nome');
+            
+        if (numericError) {
+            console.error('❌ Errore query numerica:', numericError);
+        } else {
+            console.log('✅ Unità con filtro numerico:', numericUnits?.length || 0);
+            if (numericUnits) {
+                numericUnits.forEach(unit => {
+                    console.log(`  - ID: ${unit.id} (tipo: ${typeof unit.id}), Nome: ${unit.nome}`);
+                });
+            }
+        }
+        
+        // Test 3: Query con filtro stringhe
+        console.log('🧪 Test 3: Query con filtro stringhe:', currentUser.unita_associate);
+        const { data: stringUnits, error: stringError } = await supabaseClient
+            .from('unita')
+            .select('*')
+            .in('id', currentUser.unita_associate)
+            .order('nome');
+            
+        if (stringError) {
+            console.error('❌ Errore query stringhe:', stringError);
+        } else {
+            console.log('✅ Unità con filtro stringhe:', stringUnits?.length || 0);
+            if (stringUnits) {
+                stringUnits.forEach(unit => {
+                    console.log(`  - ID: ${unit.id} (tipo: ${typeof unit.id}), Nome: ${unit.nome}`);
+                });
+            }
+        }
+        
+    } catch (error) {
+        console.error('💥 Errore test query:', error);
+    }
+};
+
+// Funzione globale per forzare il caricamento anche senza permessi
+window.forceLoadUnits = async function() {
+    console.log('🔄 FORZATURA caricamento tutte le unità...');
+    try {
+        const unitSelector = document.getElementById('unit-selector');
+        if (!unitSelector) {
+            console.error('❌ unit-selector non trovato');
+            return;
+        }
+        
+        unitSelector.innerHTML = '<option value="">Caricamento forzato...</option>';
+        
+        const { data: units, error } = await supabaseClient
+            .from('unita')
+            .select('*')
+            .order('nome');
+            
+        if (error) {
+            console.error('❌ Errore query forzata:', error);
+            return;
+        }
+        
+        console.log('✅ Unità trovate (FORZATO):', units?.length || 0);
+        
+        unitSelector.innerHTML = '<option value="">Seleziona Unità</option>';
+        
+        if (units && units.length > 0) {
+            units.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = unit.nome;
+                unitSelector.appendChild(option);
+                console.log('➕ Aggiunta unità (FORZATO):', unit.nome);
+            });
+        }
+        
+        debugUnitSelector();
+        
+    } catch (error) {
+        console.error('❌ Errore forzatura:', error);
+    }
+};
 
 // === MODAL FUNCTIONS ===
 function showAddActivityModal() {
@@ -455,7 +753,7 @@ async function loadAvailableUsersForUnit() {
         const { data: users, error } = await supabaseClient
             .from('utenti')
             .select('*')
-            .not('unita_associate', 'cs', `{${currentUnit.id}}`);
+            .not('unita_associate', 'cs', `{"${currentUnit.id}"}`);  // ID come stringa
             
         if (error) {
             console.error('❌ Errore caricamento utenti disponibili:', error);
@@ -599,9 +897,10 @@ async function handleLogout() {
             console.log('✅ Logout completato');
         } catch (error) {
             console.error('❌ Errore durante logout:', error);
-            // Forza il redirect anche in caso di errore
-            window.location.replace('login.html?event=manual_logout');
         }
+        // Forza sempre il redirect dopo il logout
+        console.log('🔄 Redirect a login...');
+        window.location.replace('login.html?event=manual_logout');
     }
 }
 
@@ -1010,7 +1309,7 @@ async function loadUnitUsers() {
         const { data: users, error } = await supabaseClient
             .from('utenti')
             .select('*')
-            .contains('unita_associate', [currentUnit.id]);
+            .contains('unita_associate', [currentUnit.id.toString()]);  // ID come stringa
             
         if (error) {
             console.error('❌ Errore caricamento utenti unità:', error);
@@ -1432,7 +1731,7 @@ async function handleNewUserSubmit(e) {
             cognome: formData.get('cognome'),
             email: formData.get('email'),
             admin: false,
-            unita_associate: currentUnit ? [currentUnit.id] : []
+            unita_associate: currentUnit ? [currentUnit.id.toString()] : []  // ID come stringa
         };
         
         // TODO: gestire creazione account Supabase Auth
@@ -1497,8 +1796,9 @@ async function handleExistingUserSubmit(e) {
         
         // Aggiungi l'unità se non già presente
         const currentUnits = user.unita_associate || [];
-        if (!currentUnits.includes(currentUnit.id)) {
-            currentUnits.push(currentUnit.id);
+        const unitIdStr = currentUnit.id.toString();  // Converte ID in stringa
+        if (!currentUnits.includes(unitIdStr)) {
+            currentUnits.push(unitIdStr);  // Aggiunge come stringa
             
             const { error } = await supabaseClient
                 .from('utenti')

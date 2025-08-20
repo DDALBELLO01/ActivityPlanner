@@ -153,11 +153,16 @@ body {
 
 .logout-tab {
     margin-left: auto;
-    color: #dc3545 !important;
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    font-weight: bold !important;
+    border: 2px solid #dc3545 !important;
 }
 
 .logout-tab:hover {
-    background-color: #fee;
+    background-color: #c82333 !important;
+    color: #ffffff !important;
+    border-color: #c82333 !important;
 }
 
 /* Main Content */
